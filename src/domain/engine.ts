@@ -80,7 +80,8 @@ function suppressPending(s: State, c: Case, reason: string, onlyTypes?: WakeType
   if (onlyTypes && !onlyTypes.includes(n.type)) return;
   c.next = undefined;
   if (n.type === 'outreach' || n.type === 'followup' || n.type === 'close_no_response' || n.type === 'resume') {
-    event(s, c, 'coordinator', 'suppressed', `Planned “${n.label.toLowerCase()}” for ${fmtDate(n.at)} cancelled`, reason);
+    const what = n.type === 'resume' ? 'Check-back' : n.type === 'outreach' ? 'First outreach' : 'Follow-up';
+    event(s, c, 'coordinator', 'suppressed', `${what} planned for ${fmtDate(n.at)} cancelled`, reason);
   }
 }
 

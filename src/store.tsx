@@ -4,16 +4,13 @@ import { initialState } from './domain/init';
 import { STATE_VERSION } from './domain/seed';
 import type { State } from './domain/types';
 
-const KEY = 'treatment-follow-up-demo';
+const KEY = 'treatment-follow-up-demo-v2';
 
-export type Page = 'worklist' | 'knowledge';
-export type Pane = 'admin' | 'patient';
+export type Page = 'patients' | 'knowledge';
 
 interface Ui {
   selectedId: string;
   page: Page;
-  pane: Pane; // used on narrow screens only
-  guideOpen: boolean;
   kbId: string;
 }
 
@@ -22,7 +19,7 @@ interface Persisted {
   ui: Ui;
 }
 
-const defaultUi: Ui = { selectedId: 'maya', page: 'worklist', pane: 'admin', guideOpen: true, kbId: 'kb-crown' };
+const defaultUi: Ui = { selectedId: 'maya', page: 'patients', kbId: 'kb-crown' };
 
 function load(): Persisted {
   try {
@@ -58,7 +55,7 @@ function summarize(prev: State, next: State): string | undefined {
   const fresh = next.events.slice(prev.events.length).filter((e) => e.actor === 'coordinator' || e.actor === 'practice');
   if (!fresh.length) return undefined;
   const names = [...new Set(fresh.map((e) => next.patients[next.cases[e.caseId].patientId].firstName))];
-  return `${fresh.length} automated step${fresh.length === 1 ? '' : 's'} · ${names.join(', ')}`;
+  return `${fresh.length} automatic step${fresh.length === 1 ? '' : 's'} for ${names.join(', ')}`;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -85,18 +82,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setAll((cur) => {
         const next = engineDispatch(cur.state, a);
         if (a.type !== 'reply') {
-          const label =
-            a.type === 'advance' ? 'Time advanced'
-            : a.type === 'jumpNext' ? 'Skipped to next scheduled action'
-            : a.type === 'practiceCancel' ? 'Cancellation received from practice schedule'
-            : a.type === 'recordCompletion' ? 'Completion recorded in practice record'
-            : 'Last event replayed';
-          const lw = next.lastWake;
-          const detail =
-            a.type === 'replayLast' && lw
-              ? `“${lw.wake.label}” for ${next.patients[next.cases[lw.caseId].patientId].firstName} was already processed; nothing re-sent. See their timeline.`
-              : summarize(cur.state, next) ?? 'No actions were due.';
-          queueMicrotask(() => showToast(label, detail));
+          if (a.type === 'advance' || a.type === 'jumpNext') {
+            queueMicrotask(() => showToast('Time moved forward', summarize(cur.state, next) ?? 'Nothing was due.'));
+          }
         }
         return { ...cur, state: next };
       });
@@ -113,7 +101,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
     setAll({ state: initialState(), ui: { ...defaultUi } });
-    showToast('Demo reset', 'All sample records restored. Outreach for new cases went out automatically.');
+    showToast('Demo reset', 'Sample patients restored.');
   }, [showToast]);
 
   const value = useMemo(() => ({ state, ui, setUi, act, reset, toast }), [state, ui, setUi, act, reset, toast]);

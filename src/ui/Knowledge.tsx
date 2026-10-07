@@ -56,7 +56,7 @@ export function Knowledge() {
             {usedBy.length ? (
               <div className="kb-used">
                 {usedBy.map((p) => (
-                  <button key={p.id} className="chip" onClick={() => setUi({ page: 'worklist', selectedId: p.id })}>{p.name}</button>
+                  <button key={p.id} className="chip" onClick={() => setUi({ page: 'patients', selectedId: p.id })}>{p.name}</button>
                 ))}
               </div>
             ) : (

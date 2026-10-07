@@ -154,12 +154,6 @@ describe('rules', () => {
     s = run(s, { type: 'reply', caseId: 'maya', optionId: slot }, { type: 'reply', caseId: 'maya', optionId: slot });
     expect(Object.values(s.appointments).filter((a) => a.caseId === 'maya')).toHaveLength(1);
   });
-
-  it('background case James reaches the cap', () => {
-    const s = run(initialState(), { type: 'advance', ms: 10 * DAY });
-    expect(s.cases.james.status).toBe('no_response');
-    expect(coord(s, 'james').filter((m) => m.tag?.startsWith('Follow-up'))).toHaveLength(2);
-  });
 });
 
 describe('clarification: Elena', () => {

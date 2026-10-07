@@ -22,17 +22,6 @@ export const BARRIER: Record<Barrier, string> = {
   scheduling: 'Scheduling',
 };
 
-export type Filter = 'all' | 'waiting' | 'paused' | 'booked' | 'completed' | 'closed';
-
-export const FILTERS: { id: Filter; label: string; match: (c: Case) => boolean }[] = [
-  { id: 'all', label: 'All', match: () => true },
-  { id: 'waiting', label: 'Waiting for reply', match: (c) => c.status === 'awaiting_reply' },
-  { id: 'paused', label: 'Paused', match: (c) => c.status === 'paused' },
-  { id: 'booked', label: 'Booked', match: (c) => ['booked', 'consult_booked', 'visit_passed'].includes(c.status) },
-  { id: 'completed', label: 'Completed', match: (c) => c.status === 'completed' },
-  { id: 'closed', label: 'Closed', match: (c) => ['declined', 'opted_out', 'no_response'].includes(c.status) },
-];
-
 /** What happens next for a case, in plain language. */
 export function nextActionText(s: State, c: Case): { label: string; at?: number } {
   if (c.next) return { label: c.next.label, at: c.next.at };
