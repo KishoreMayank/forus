@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Follow-up · v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  /* Same tokens as v1. Two source tints are new:
+     chart  #E4F0E8 / #2D6A45  text that came from the patient's chart
+     faq    #E7EEF8 / #2C5D8A  text that came from the practice's FAQ files */
+  :root {
+    --paper: #FBFCFC; --ink: #14201F; --slate: #66737A; --faint: #9AA5AA; --rule: #E3E8EA; --wash: #F2F5F6;
+    --teal: #23606B; --teal-wash: #E6F0F1; --amber: #A8671A; --amber-wash: #FBF2E6;
+    --chart: #2D6A45; --chart-wash: #E4F0E8; --faq: #2C5D8A; --faq-wash: #E7EEF8;
+    --sans: 'IBM Plex Sans', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #EEF1F2; color: var(--ink); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, p, ol, ul { margin: 0; padding: 0; }
+  ul, ol { list-style: none; }
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
+
+  /* presentation shell */
+  .doc { max-width: 1180px; margin: 0 auto; padding: 32px 24px 14px; display: flex; align-items: flex-end; gap: 24px; }
+  .doc h1 { font-size: 20px; font-weight: 600; }
+  .doc p { color: var(--slate); margin-top: 4px; max-width: 640px; }
+  .doc label { margin-left: auto; font-size: 13px; color: var(--slate); display: flex; gap: 6px; align-items: center; cursor: pointer; white-space: nowrap; }
+  .stage-wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px 64px; }
+  .frame { position: relative; background: var(--paper); border: 1px solid #D9DFE1; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(20,32,31,.04), 0 12px 32px rgba(20,32,31,.06); min-height: 640px; }
+  .mk { display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: #FFE9A8; color: #6B4A00; font: 600 10px/1 var(--sans); vertical-align: 2px; margin: 0 4px; flex: none; }
+  body.no-notes .mk, body.no-notes .notes { display: none; }
+  .notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 32px; margin-top: 22px; }
+  .notes li { display: flex; gap: 10px; font-size: 13.5px; }
+  .notes li .mk { margin: 2px 0 0; }
+  .notes b { font-weight: 600; }
+  .notes span.t { color: var(--slate); }
+  .notes[hidden] { display: none; }
+
+  /* product chrome */
+  .bar { display: flex; align-items: center; gap: 20px; height: 52px; padding: 0 24px; border-bottom: 1px solid var(--rule); }
+  .practice { font-weight: 600; white-space: nowrap; }
+  .practice span { color: var(--faint); font-weight: 400; margin: 0 6px; }
+  .nav { display: flex; gap: 2px; }
+  .nav button { padding: 5px 10px; border-radius: 6px; color: var(--slate); font-weight: 500; font-size: 13.5px; }
+  .nav button[aria-current="page"] { color: var(--ink); background: var(--wash); }
+  .sync { margin-left: auto; position: relative; }
+  .sync > button { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--slate); padding: 5px 8px; border-radius: 6px; }
+  .sync > button:hover { background: var(--wash); }
+  .pop { position: absolute; right: 0; top: calc(100% + 6px); width: 300px; background: #fff; border: 1px solid var(--rule); border-radius: 10px; box-shadow: 0 12px 32px rgba(20,32,31,.12); padding: 6px; z-index: 30; }
+  .pop[hidden] { display: none; }
+  .pop li { display: grid; grid-template-columns: 14px 1fr; gap: 2px 8px; padding: 8px 10px; }
+  .pop li .dot { margin-top: 6px; }
+  .pop b { font-weight: 500; }
+  .pop small { grid-column: 2; color: var(--slate); font-size: 12px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); display: inline-block; flex: none; }
+  .view { padding: 28px 32px 32px; }
+  .view[hidden] { display: none; }
+  .view-head { display: flex; align-items: baseline; gap: 12px; }
+  .view-head h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .view-head .sub { color: var(--slate); font-size: 13.5px; }
+  .chart-line { font: 12.5px/1.4 var(--mono); color: var(--slate); }
+  .chart-line b { color: var(--ink); font-weight: 500; }
+
+  /* ── Queue ─────────────────────────────────────────────── */
+  .stages { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 22px; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .stg { padding: 12px 16px 14px; border-right: 1px solid var(--rule); position: relative; }
+  .stg:last-child { border-right: 0; }
+  .stg .n { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stg .l { font-size: 12.5px; color: var(--slate); }
+  .stg.after { background: var(--wash); }
+  .stg.after .n { color: var(--slate); }
+  .stg:not(:last-child)::after { content: ''; position: absolute; right: -5px; top: 50%; width: 8px; height: 8px; background: var(--paper); border-top: 1px solid var(--rule); border-right: 1px solid var(--rule); transform: translateY(-50%) rotate(45deg); z-index: 1; }
+  .stg.after::after { background: var(--wash); }
+
+  .queue { margin-top: 26px; }
+  .queue-h { display: flex; align-items: baseline; justify-content: space-between; font-size: 12.5px; color: var(--faint); padding: 0 4px 8px; border-bottom: 1px solid var(--rule); }
+  .q { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; align-items: center; width: 100%; text-align: left; padding: 14px 4px; border-bottom: 1px solid var(--rule); }
+  .q:hover { background: var(--wash); }
+  .q .name { font-weight: 500; }
+  .track { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .segs { display: flex; gap: 3px; }
+  .segs i { width: 18px; height: 4px; border-radius: 2px; background: var(--rule); }
+  .segs i.on { background: var(--teal); }
+  .segs.amber i.on { background: var(--amber); }
+  .segs.paused i.on { background: var(--faint); }
+  .q .nx { font-size: 13px; color: var(--slate); text-align: right; }
+  .q .nx b { color: var(--ink); font-weight: 500; }
+  .q .nx.amber b { color: var(--amber); }
+  .booked-line { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding: 12px 16px; border-radius: 10px; background: var(--wash); font-size: 13.5px; color: var(--slate); }
+  .booked-line b { color: var(--ink); font-weight: 500; }
+  .link { color: var(--teal); font-weight: 500; font-size: 13px; }
+
+  /* ── Patient panel ─────────────────────────────────────── */
+  .scrim { position: absolute; inset: 52px 0 0 0; background: rgba(20,32,31,.18); z-index: 10; }
+  .panel { position: absolute; top: 52px; right: 0; bottom: 0; width: min(860px, 100%); background: var(--paper); border-left: 1px solid var(--rule); z-index: 11; display: flex; flex-direction: column; box-shadow: -12px 0 32px rgba(20,32,31,.08); }
+  .scrim[hidden], .panel[hidden] { display: none; }
+  .panel-head { display: flex; align-items: flex-start; gap: 16px; padding: 20px 24px 16px; border-bottom: 1px solid var(--rule); }
+  .panel-head h3 { font-size: 18px; font-weight: 600; }
+  .panel-head .x { margin-left: auto; font-size: 20px; color: var(--slate); width: 28px; height: 28px; border-radius: 6px; }
+  .panel-head .x:hover { background: var(--wash); }
+  .panel-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; flex: 1; min-height: 0; }
+  .convo { padding: 18px 24px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--slate); margin-bottom: 4px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i, .cal-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+  .m { max-width: 88%; }
+  .m .meta { font-size: 11.5px; color: var(--faint); margin-bottom: 3px; }
+  .m .b { background: #EFF1F1; border-radius: 14px 14px 14px 4px; padding: 10px 13px; line-height: 1.6; }
+  .m.pt { align-self: flex-end; }
+  .m.pt .meta { text-align: right; }
+  .m.pt .b { background: var(--ink); color: #fff; border-radius: 14px 14px 4px 14px; }
+  .src-chart, .src-faq { border-radius: 3px; padding: 1px 2px; cursor: default; transition: box-shadow .15s; }
+  .src-chart { background: var(--chart-wash); box-shadow: inset 0 -1.5px 0 #9CC7AA; }
+  .src-faq { background: var(--faq-wash); box-shadow: inset 0 -1.5px 0 #A3BCE0; }
+  .lit .src-chart[data-k="chart"], .lit-chart .src-chart { box-shadow: inset 0 -1.5px 0 var(--chart), 0 0 0 2px #9CC7AA; }
+  .lit-faq .src-faq { box-shadow: inset 0 -1.5px 0 var(--faq), 0 0 0 2px #A3BCE0; }
+  .side { border-left: 1px solid var(--rule); padding: 18px 20px; overflow: auto; display: flex; flex-direction: column; gap: 14px; background: #fff; }
+  .side .k { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; display: flex; align-items: center; }
+  .card { border-radius: 10px; padding: 12px 14px; border: 1px solid; transition: box-shadow .15s; }
+  .card.chart { border-color: #CFE3D6; background: #F6FAF7; }
+  .card.faq { border-color: #D3E0F1; background: #F6F9FC; }
+  .card .t { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .card.chart .t { color: var(--chart); }
+  .card.faq .t { color: var(--faq); }
+  .card p { font: 12.5px/1.6 var(--mono); color: #3B4746; }
+  .card p mark { background: var(--chart-wash); color: inherit; border-radius: 2px; }
+  .card.faq p mark { background: var(--faq-wash); }
+  .card .foot { font-size: 11.5px; color: var(--faint); margin-top: 6px; }
+  .lit-chart .card.chart { box-shadow: 0 0 0 2px #9CC7AA; }
+  .lit-faq .card.faq { box-shadow: 0 0 0 2px #A3BCE0; }
+  .side .nextcard { background: var(--teal-wash); color: #17454C; border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .side .nextcard b { font-weight: 600; }
+  .side .acts { display: flex; gap: 6px; margin-top: 10px; }
+  .btn { padding: 5px 11px; border-radius: 7px; border: 1px solid var(--rule); background: #fff; font-size: 12.5px; font-weight: 500; }
+  .btn:hover { border-color: var(--faint); }
+
+  /* ── Calendar ──────────────────────────────────────────── */
+  .cal-tools { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+  .seg button { padding: 5px 12px; font-size: 12.5px; color: var(--slate); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .arrow { width: 30px; height: 30px; border-radius: 7px; border: 1px solid var(--rule); color: var(--slate); }
+  .arrow:disabled { opacity: .35; cursor: default; }
+  .cal { display: grid; grid-template-columns: 52px repeat(5, minmax(0, 1fr)); margin-top: 20px; border-top: 1px solid var(--rule); }
+  .cal .dh { padding: 8px 10px; font-size: 12.5px; color: var(--slate); border-bottom: 1px solid var(--rule); border-left: 1px solid var(--rule); }
+  .cal .dh b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+  .cal .dh.today b { color: var(--teal); }
+  .times { position: relative; }
+  .times span { position: absolute; right: 8px; font-size: 11px; color: var(--faint); transform: translateY(-50%); font-variant-numeric: tabular-nums; }
+  .day { position: relative; border-left: 1px solid var(--rule); height: 450px; background: repeating-linear-gradient(to bottom, transparent 0, transparent 49px, var(--line, #EEF1F2) 49px, var(--line, #EEF1F2) 50px); }
+  .ap { position: absolute; left: 4px; right: 4px; border-radius: 6px; padding: 4px 7px; font-size: 11.5px; line-height: 1.3; overflow: hidden; }
+  .ap.busy { background: #F0F2F3; color: var(--faint); }
+  .ap.ours { background: var(--teal); color: #fff; box-shadow: 0 1px 2px rgba(20,32,31,.15); }
+  .ap.ours.consult { background: var(--amber-wash); color: #6B4A12; border: 1px solid #EAD6B8; }
+  .ap b { font-weight: 600; display: block; }
+  .ap .new { display: inline-block; font-size: 10px; font-weight: 600; background: #fff; color: var(--teal); border-radius: 3px; padding: 0 4px; margin-top: 2px; }
+  body.only-ours .ap.busy { opacity: .25; }
+  .cal-legend { display: flex; gap: 18px; margin-top: 12px; font-size: 12px; color: var(--slate); }
+  .cal-legend span { display: inline-flex; gap: 6px; align-items: center; }
+  .cal-legend i { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* ── Knowledge ─────────────────────────────────────────── */
+  .kb { display: grid; grid-template-columns: 200px minmax(0, 1fr) 320px; gap: 0; margin: 20px -32px -32px; border-top: 1px solid var(--rule); min-height: 520px; }
+  .tree { border-right: 1px solid var(--rule); padding: 14px 0; font: 12.5px/1.4 var(--mono); }
+  .tree .dir { color: var(--faint); padding: 4px 18px; }
+  .tree button { display: flex; width: 100%; text-align: left; padding: 5px 18px 5px 30px; color: var(--ink); gap: 6px; }
+  .tree button:hover { background: var(--wash); }
+  .tree button[aria-current="true"] { background: var(--wash); font-weight: 600; }
+  .tree button .draft { color: var(--faint); font-weight: 400; margin-left: auto; }
+  .md { padding: 18px 28px 28px; overflow: auto; }
+  .md-head { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--slate); padding-bottom: 12px; border-bottom: 1px solid var(--rule); margin-bottom: 16px; }
+  .md-head .file { font: 500 13px var(--mono); color: var(--ink); }
+  .md-head .btn { margin-left: auto; }
+  .src { font: 13px/1.75 var(--mono); color: #2B3634; white-space: pre-wrap; }
+  .src .h { font-weight: 600; color: var(--ink); }
+  .src .hm { color: var(--faint); font-weight: 400; }
+  .src .q { display: block; border-radius: 6px; margin: 0 -8px; padding: 0 8px; cursor: pointer; }
+  .src .q:hover { background: var(--wash); }
+  .src .q.sel { background: var(--faq-wash); }
+  .src .use { float: right; font: 11.5px var(--sans); color: var(--faint); margin-top: 4px; }
+  .src .bq { color: var(--slate); }
+  .src .rule { color: var(--amber); }
+  .preview { border-left: 1px solid var(--rule); padding: 18px 20px; background: #fff; display: flex; flex-direction: column; gap: 12px; }
+  .preview .k { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
+  .preview select { font: inherit; font-size: 13px; border: 1px solid var(--rule); border-radius: 7px; padding: 4px 8px; background: #fff; }
+  .preview .help { font-size: 12.5px; color: var(--slate); }
+
+  @media (max-width: 900px) {
+    .doc { flex-direction: column; align-items: flex-start; }
+    .doc label { margin-left: 0; }
+    .notes { grid-template-columns: 1fr; }
+    .bar { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 6px 14px; }
+    .view { padding: 20px 16px; }
+    .stages { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .stg { padding: 10px 8px; }
+    .stg .n { font-size: 20px; }
+    .stg .l { font-size: 11px; }
+    .q { grid-template-columns: 1fr auto; gap: 4px 12px; }
+    .q .chart-line { grid-column: 1; }
+    .panel-body { grid-template-columns: 1fr; overflow: auto; }
+    .side { border-left: 0; border-top: 1px solid var(--rule); }
+    .scrim, .panel { top: 0; }
+    .cal { grid-template-columns: 40px repeat(5, minmax(64px, 1fr)); overflow-x: auto; }
+    .kb { grid-template-columns: 1fr; margin: 16px -16px -20px; }
+    .tree, .preview { border: 0; border-bottom: 1px solid var(--rule); }
+    .view-head { flex-wrap: wrap; }
+    .cal-tools { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="doc">
+  <div>
+    <h1>Treatment follow-up · v2</h1>
+    <p>Queue shows progress by stage. Booked patients move to the calendar. FAQs live as files, and each patient&rsquo;s conversation shows which sentences came from their chart and which from an FAQ. Click around: the rows, the tabs, and the sync line all work.</p>
+  </div>
+  <label><input type="checkbox" id="notesToggle" checked /> Show notes</label>
+</header>
+
+<div class="stage-wrap">
+  <div class="frame" id="frame">
+    <div class="bar">
+      <span class="practice">Harbor Dental<span>/</span>Follow-up</span>
+      <nav class="nav">
+        <button data-view="queue" aria-current="page">Queue</button>
+        <button data-view="calendar">Calendar</button>
+        <button data-view="knowledge">Knowledge</button>
+      </nav>
+      <div class="sync">
+        <button id="syncBtn" aria-expanded="false"><span class="dot"></span>Synced 9:04 AM <span class="mk">1</span></button>
+        <ul class="pop" id="syncPop" hidden>
+          <li><span class="dot"></span><b>Charts &amp; treatment history</b><small>Reads treatment plans, dentist notes, completed work</small></li>
+          <li><span class="dot"></span><b>Appointment book</b><small>Reads open times · writes bookings patients choose</small></li>
+          <li><span class="dot"></span><b>Text messages</b><small>(555) 010-4400 · weekdays 9–6</small></li>
+          <li><span class="dot" style="background:var(--ink)"></span><b>FAQ files</b><small>4 files · edited by the practice</small></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- QUEUE -->
+    <section class="view" id="v-queue">
+      <div class="view-head">
+        <h2>Queue</h2>
+        <span class="sub">Treatment plans from the last 90 days with nothing booked</span>
+      </div>
+
+      <div class="stages" aria-label="Progress by stage">
+        <div class="stg"><div class="n">2</div><div class="l">Found in charts <span class="mk">2</span></div></div>
+        <div class="stg"><div class="n">2</div><div class="l">Texted</div></div>
+        <div class="stg"><div class="n">3</div><div class="l">In conversation</div></div>
+        <div class="stg after"><div class="n">3</div><div class="l">Booked</div></div>
+        <div class="stg after"><div class="n">1</div><div class="l">Completed</div></div>
+      </div>
+
+      <div class="queue">
+        <div class="queue-h"><span>7 in the queue <span class="mk">3</span></span><span>Next step</span></div>
+        <div id="qrows"></div>
+        <div class="booked-line"><span><b>3 booked</b> this month, with appointments in the calendar <span class="mk">4</span></span><button class="link" data-view="calendar">Open calendar →</button></div>
+      </div>
+    </section>
+
+    <!-- CALENDAR -->
+    <section class="view" id="v-calendar" hidden>
+      <div class="view-head">
+        <h2 id="weekLabel">12 – 16 Oct</h2>
+        <span class="sub">Appointment book · Dr. Shah &amp; Dr. Bell</span>
+        <div class="cal-tools">
+          <div class="seg"><button id="fAll" aria-pressed="true">All appointments</button><button id="fOurs" aria-pressed="false">Booked by follow-up <span class="mk">6</span></button></div>
+          <button class="arrow" id="prevWk" aria-label="Previous week" disabled>‹</button>
+          <button class="arrow" id="nextWk" aria-label="Next week">›</button>
+        </div>
+      </div>
+      <div class="cal" id="cal"></div>
+      <div class="cal-legend">
+        <span><i style="background:var(--teal)"></i>Booked by a patient over text <span class="mk">5</span></span>
+        <span><i style="background:var(--amber-wash);border:1px solid #EAD6B8"></i>Discussion with a dentist</span>
+        <span><i style="background:#F0F2F3"></i>Other appointments</span>
+      </div>
+    </section>
+
+    <!-- KNOWLEDGE -->
+    <section class="view" id="v-knowledge" hidden>
+      <div class="view-head">
+        <h2>Knowledge</h2>
+        <span class="sub">General answers written by the practice. Patient-specific reasons always come from the chart.</span>
+      </div>
+      <div class="kb">
+        <nav class="tree" aria-label="FAQ files">
+          <div class="dir">faq/ <span class="mk">8</span></div>
+          <button data-file="crowns" aria-current="true">crowns.md</button>
+          <button data-file="appointment">the-appointment.md</button>
+          <button data-file="scheduling">scheduling.md</button>
+          <button data-file="costs">costs.md <span class="draft">draft</span></button>
+        </nav>
+        <div class="md">
+          <div class="md-head"><span class="file" id="mdName">crowns.md</span><span id="mdMeta">Edited 30 Sep by Office manager · reviewed by Dr. Shah</span><button class="btn">Edit</button></div>
+          <div class="src" id="mdSrc"></div>
+        </div>
+        <aside class="preview">
+          <div class="k">Preview with a chart <span class="mk">7</span></div>
+          <select id="pvPatient" aria-label="Preview patient">
+            <option value="maya">Maya Chen · #30 Crown</option>
+            <option value="daniel">Daniel Okafor · #3 Crown</option>
+          </select>
+          <p class="help" id="pvHelp">Click a question in the file to see the reply this patient would get.</p>
+          <div class="m" style="max-width:100%"><div class="b" id="pvReply"></div></div>
+          <div class="legend"><span><i style="background:var(--chart-wash);box-shadow:inset 0 -1.5px 0 #9CC7AA"></i>From the chart</span><span><i style="background:var(--faq-wash);box-shadow:inset 0 -1.5px 0 #A3BCE0"></i>From this file</span></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- PATIENT PANEL -->
+    <div class="scrim" id="scrim" hidden></div>
+    <aside class="panel" id="panel" hidden aria-label="Patient">
+      <div class="panel-head">
+        <div>
+          <h3 id="pName">Maya Chen</h3>
+          <div class="chart-line" id="pChart"></div>
+        </div>
+        <button class="x" id="pClose" aria-label="Close">×</button>
+      </div>
+      <div class="panel-body">
+        <div class="convo" id="pConvo"></div>
+        <div class="side" id="pSide"></div>
+      </div>
+    </aside>
+  </div>
+
+  <ol class="notes" data-for="queue">
+    <li><span class="mk">1</span><span><b>Connections in one line.</b> <span class="t">&ldquo;Synced 9:04 AM&rdquo; is all staff need. Clicking it lists the four sources and what each is used for. A failed sync would turn this amber.</span></span></li>
+    <li><span class="mk">2</span><span><b>Stages are the headline.</b> <span class="t">Five numbers show progress at a glance, starting with the chart. Booked and Completed are greyed because that&rsquo;s the practice&rsquo;s usual workflow, not the queue&rsquo;s.</span></span></li>
+    <li><span class="mk">3</span><span><b>Four facts per row.</b> <span class="t">Who, what treatment, which stage, and what happens next. Everything else is one click away in the patient panel.</span></span></li>
+    <li><span class="mk">4</span><span><b>Booked patients leave the queue.</b> <span class="t">Once someone is booked they&rsquo;re summarised in one line that points to the calendar.</span></span></li>
+  </ol>
+  <ol class="notes" data-for="calendar" hidden>
+    <li><span class="mk">5</span><span><b>Only follow-up bookings are coloured.</b> <span class="t">The rest of the book is grey, with no patient names. The point is to see this tool&rsquo;s bookings land in the real schedule, not to replace the practice&rsquo;s calendar.</span></span></li>
+    <li><span class="mk">6</span><span><b>One filter, nothing else.</b> <span class="t">&ldquo;Booked by follow-up&rdquo; fades the rest of the book. A &ldquo;New&rdquo; tag marks bookings made since you last looked, so a busy desk notices them without a notification.</span></span></li>
+  </ol>
+  <ol class="notes" data-for="knowledge" hidden>
+    <li><span class="mk">7</span><span><b>FAQ and chart, side by side.</b> <span class="t">Pick a question and a real patient to see the reply that would go out, with each sentence tinted by its source. Staff can check a wording edit against a real case before saving it.</span></span></li>
+    <li><span class="mk">8</span><span><b>Plain markdown files.</b> <span class="t">Anyone at the desk can edit them. A line starting with &ldquo;→ Ask the dentist&rdquo; is a rule: the tool won&rsquo;t answer that question itself. It offers a discussion instead.</span></span></li>
+  </ol>
+</div>
+
+<script>
+/* ── data ───────────────────────────────────────────── */
+const STAGES = ['Found', 'Texted', 'Conversation', 'Booked', 'Completed'];
+const patients = {
+  maya:   { name: 'Maya Chen', tooth: '#30', dr: 'Dr. Shah', date: '28 Sep', stage: 2, stageText: 'Asked why she needs it', next: 'Thu 15 Oct', nextText: 'follow up if no reply' },
+  elena:  { name: 'Elena Ruiz', tooth: '#19', dr: 'Dr. Bell', date: '24 Sep', stage: 2, tone: 'amber', stageText: 'Question for Dr. Bell', next: 'Thu 22 Oct', nextText: 'call with Dr. Bell' },
+  aisha:  { name: 'Aisha Rahman', tooth: '#31', dr: 'Dr. Shah', date: '16 Sep', stage: 2, tone: 'paused', stageText: 'Paused at her request', next: 'Thu 22 Oct', nextText: 'check back' },
+  daniel: { name: 'Daniel Okafor', tooth: '#3', dr: 'Dr. Shah', date: '21 Sep', stage: 1, stageText: 'No reply yet', next: 'Thu 15 Oct', nextText: 'follow up' },
+  james:  { name: 'James Whitfield', tooth: '#18', dr: 'Dr. Bell', date: '14 Sep', stage: 1, stageText: 'No reply to 2 texts', next: 'Today', nextText: 'last follow-up' },
+  nora:   { name: 'Nora Kim', tooth: '#29', dr: 'Dr. Bell', date: '29 Sep', stage: 0, stageText: 'Found this morning', next: 'Today 10:00', nextText: 'first text' },
+  leo:    { name: 'Leo Brandt', tooth: '#15', dr: 'Dr. Shah', date: '30 Sep', stage: 0, stageText: 'Found this morning', next: 'Tue 13 Oct', nextText: 'first text' },
+};
+const order = ['nora', 'leo', 'daniel', 'james', 'maya', 'elena', 'aisha'];
+
+const qrows = document.getElementById('qrows');
+qrows.innerHTML = order.map((id) => {
+  const p = patients[id];
+  const segs = STAGES.map((_, i) => `<i class="${i <= p.stage ? 'on' : ''}"></i>`).join('');
+  return `<button class="q" data-p="${id}">
+    <span class="name">${p.name}</span>
+    <span class="chart-line"><b>${p.tooth}</b> · Crown · ${p.dr}</span>
+    <span class="track"><span class="segs ${p.tone || ''}">${segs}</span>${p.stageText}</span>
+    <span class="nx ${p.tone === 'amber' ? 'amber' : ''}"><b>${p.next}</b> · ${p.nextText}</span>
+  </button>`;
+}).join('');
+
+/* ── views ──────────────────────────────────────────── */
+function show(view) {
+  document.querySelectorAll('.nav button').forEach((b) => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  ['queue', 'calendar', 'knowledge'].forEach((v) => (document.getElementById('v-' + v).hidden = v !== view));
+  document.querySelectorAll('.notes').forEach((n) => (n.hidden = n.dataset.for !== view));
+  closePanel();
+}
+document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
+
+const syncBtn = document.getElementById('syncBtn'), syncPop = document.getElementById('syncPop');
+syncBtn.addEventListener('click', (e) => { e.stopPropagation(); syncPop.hidden = !syncPop.hidden; syncBtn.setAttribute('aria-expanded', String(!syncPop.hidden)); });
+document.addEventListener('click', (e) => { if (!syncPop.contains(e.target)) syncPop.hidden = true; });
+
+document.getElementById('notesToggle').addEventListener('change', (e) => document.body.classList.toggle('no-notes', !e.target.checked));
+
+/* ── patient panel ──────────────────────────────────── */
+const C = (t) => `<span class="src-chart" data-k="chart">${t}</span>`;
+const F = (t) => `<span class="src-faq" data-k="faq">${t}</span>`;
+const convos = {
+  maya: {
+    msgs: [
+      ['co', 'Mon 9:00', `Hi Maya, this is Harbor Dental. At your ${C('28 Sep visit, Dr. Shah recommended a crown for your lower right back tooth (#30)')}. We haven’t seen it on the schedule yet. Would you like to book a time, or do you have questions first?`],
+      ['pt', 'Mon 9:36', 'Why do I need a crown?'],
+      ['co', 'Mon 9:37', `${C('Dr. Shah noted a large, older filling and a crack line in one of the cusps, and that it’s sensitive when you chew.')} ${F('A crown is a cap that covers the whole tooth, so biting pressure is spread evenly instead of landing on the weakened walls.')}<br><br>Would you like to see some appointment times?`],
+    ],
+    chart: { title: 'Chart · Dr. Shah · 28 Sep', text: '#30: <mark>large MOD amalgam (~15 yrs) with visible fracture line on DL cusp. Pt reports sensitivity on chewing.</mark> Recommend full-coverage crown to protect remaining tooth structure.', foot: 'Treatment plan: D2740 Crown, porcelain/ceramic' },
+    faq: { title: 'crowns.md › Why do I need a crown?', text: '<mark>A crown is a cap that covers the whole tooth, so biting pressure is spread evenly</mark> instead of on weakened walls.', foot: 'Used in 4 replies this week' },
+    next: '<b>Thu 15 Oct, 10:00</b><br>Follow up by text if Maya hasn’t replied (1 of 2).',
+  },
+  elena: {
+    msgs: [
+      ['pt', 'Thu 9:38', 'Could a filling work instead?'],
+      ['co', 'Thu 9:39', `That’s a good question for Dr. Bell directly. ${C('Dr. Bell’s note explains why a crown was recommended')}, but it doesn’t discuss other options for your tooth, and ${F('I don’t want to guess about something this specific to you')}. I can set up a 20-minute call with Dr. Bell. Would that help?`],
+      ['pt', 'Thu 9:41', 'Yes please'],
+      ['co', 'Thu 9:42', 'Booked: a 20-minute call with Dr. Bell on Thu 22 Oct at 12:30. I’ve sent your question to the dental team so they’re ready.'],
+    ],
+    chart: { title: 'Chart · Dr. Bell · 24 Sep', text: '#19: <mark>large failing composite, recurrent decay at distal margin, ML cusp undermined. Recommend crown.</mark> Pt hesitant.', foot: 'Doesn’t mention alternatives' },
+    faq: { title: 'crowns.md › Could a filling work instead?', text: '<mark>→ Ask the dentist.</mark> Don’t answer from this file.', foot: 'Rule: offer a dentist discussion' },
+    next: '<b>Thu 22 Oct, 12:30</b><br>Call with Dr. Bell. Question already shared with the team.',
+  },
+};
+function generic(p) {
+  return {
+    msgs: [['co', p.stage === 0 ? 'Scheduled' : 'Mon 9:00', `Hi ${p.name.split(' ')[0]}, this is Harbor Dental. ${C(`At your ${p.date} visit, ${p.dr} recommended a crown for tooth ${p.tooth}`)}. We haven’t seen it on the schedule yet. Would you like to book a time, or do you have questions first?`]],
+    chart: { title: `Chart · ${p.dr} · ${p.date}`, text: `${p.tooth}: <mark>Recommend crown.</mark>`, foot: 'Treatment plan: D2740 Crown' },
+    faq: null,
+    next: `<b>${p.next}</b><br>${p.nextText[0].toUpperCase() + p.nextText.slice(1)}.`,
+  };
+}
+
+const panel = document.getElementById('panel'), scrim = document.getElementById('scrim');
+function openPanel(id) {
+  const p = patients[id];
+  const c = convos[id] || generic(p);
+  document.getElementById('pName').textContent = p.name;
+  document.getElementById('pChart').innerHTML = `<b>${p.tooth}</b> · D2740 Crown · ${p.dr} · ${p.date}`;
+  document.getElementById('pConvo').innerHTML =
+    `<div class="legend"><span><i style="background:var(--chart-wash);box-shadow:inset 0 -1.5px 0 #9CC7AA"></i>From the chart</span><span><i style="background:var(--faq-wash);box-shadow:inset 0 -1.5px 0 #A3BCE0"></i>From an FAQ</span></div>` +
+    c.msgs.map(([who, t, html]) => `<div class="m ${who === 'pt' ? 'pt' : ''}"><div class="meta">${who === 'pt' ? p.name.split(' ')[0] : 'Harbor Dental'} · ${t}</div><div class="b">${html}</div></div>`).join('');
+  document.getElementById('pSide').innerHTML =
+    `<div><div class="k">Next</div><div class="nextcard">${c.next}<div class="acts"><button class="btn">Pause</button><button class="btn">Stop</button></div></div></div>` +
+    `<div><div class="k">Used in replies</div>
+      <div class="card chart"><div class="t">${c.chart.title}</div><p>${c.chart.text}</p><div class="foot">${c.chart.foot}</div></div>
+      ${c.faq ? `<div class="card faq" style="margin-top:10px"><div class="t">${c.faq.title}</div><p>${c.faq.text}</p><div class="foot">${c.faq.foot}</div></div>` : ''}
+    </div>`;
+  panel.hidden = scrim.hidden = false;
+}
+function closePanel() { panel.hidden = scrim.hidden = true; }
+qrows.addEventListener('click', (e) => { const b = e.target.closest('.q'); if (b) openPanel(b.dataset.p); });
+scrim.addEventListener('click', closePanel);
+document.getElementById('pClose').addEventListener('click', closePanel);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
+// Hovering a tinted sentence lights up its source card, and vice versa.
+panel.addEventListener('mouseover', (e) => {
+  const k = e.target.closest('[data-k]')?.dataset.k || (e.target.closest('.card.chart') ? 'chart' : e.target.closest('.card.faq') ? 'faq' : null);
+  panel.classList.toggle('lit-chart', k === 'chart');
+  panel.classList.toggle('lit-faq', k === 'faq');
+});
+
+/* ── calendar ───────────────────────────────────────── */
+// [dayIndex, startHour, durationHours, kind, label]
+const weeks = [
+  { label: '12 – 16 Oct', days: ['Mon 12', 'Tue 13', 'Wed 14', 'Thu 15', 'Fri 16'], today: 0, appts: [
+    [0, 8, 1.5, 'busy'], [0, 13.5, 1, 'busy'], [1, 10, 1.5, 'busy'], [1, 8, 1, 'busy'], [1, 15.5, 1.5, 'busy'],
+    [2, 10, 0.5, 'busy'], [2, 13.5, 1.5, 'busy'], [3, 8, 1.5, 'busy'], [3, 10, 1, 'busy'],
+    [3, 13.5, 1.5, 'ours', 'Robert Lindqvist', 'Crown #14 · Dr. Shah'], [4, 8, 1.5, 'busy'], [4, 13.5, 1, 'busy'],
+    [4, 10, 1.5, 'ours', 'Sam Patel', 'Crown #4 · Dr. Shah', true],
+  ]},
+  { label: '19 – 23 Oct', days: ['Mon 19', 'Tue 20', 'Wed 21', 'Thu 22', 'Fri 23'], today: -1, appts: [
+    [0, 8, 1.5, 'busy'], [0, 10, 1.5, 'busy'], [1, 13.5, 1.5, 'busy'], [2, 8, 1.5, 'busy'], [2, 15.5, 1.5, 'busy'],
+    [1, 8, 1.5, 'ours', 'Hana Sato', 'Crown #13 · Dr. Bell'], [3, 10, 1.5, 'busy'], [4, 13.5, 1.5, 'busy'],
+    [3, 12.5, 0.33, 'ours consult', 'Elena Ruiz', 'Call · Dr. Bell'],
+  ]},
+];
+let wk = 0;
+const HOUR = 50, START = 8;
+function renderCal() {
+  const w = weeks[wk];
+  document.getElementById('weekLabel').textContent = w.label;
+  document.getElementById('prevWk').disabled = wk === 0;
+  document.getElementById('nextWk').disabled = wk === weeks.length - 1;
+  let html = '<div></div>' + w.days.map((d, i) => `<div class="dh ${i === w.today ? 'today' : ''}"><b>${d.split(' ')[0]}</b>${d.split(' ')[1]}</div>`).join('');
+  html += '<div class="times">' + [8, 9, 10, 11, 12, 13, 14, 15, 16].map((h) => `<span style="top:${(h - START) * HOUR}px">${h > 12 ? h - 12 : h}${h >= 12 ? 'pm' : 'am'}</span>`).join('') + '</div>';
+  html += w.days.map((_, di) => '<div class="day">' + w.appts.filter((a) => a[0] === di).map(([, s, d, k, n, sub, isNew]) =>
+    `<div class="ap ${k}" style="top:${(s - START) * HOUR + 1}px;height:${Math.max(d * HOUR - 3, 20)}px">${k === 'busy' ? '' : `<b>${n}</b>${sub}${isNew ? '<br><span class="new">New · booked by text</span>' : ''}`}</div>`).join('') + '</div>').join('');
+  document.getElementById('cal').innerHTML = html;
+}
+renderCal();
+document.getElementById('prevWk').addEventListener('click', () => { wk = Math.max(0, wk - 1); renderCal(); });
+document.getElementById('nextWk').addEventListener('click', () => { wk = Math.min(weeks.length - 1, wk + 1); renderCal(); });
+const fAll = document.getElementById('fAll'), fOurs = document.getElementById('fOurs');
+function setFilter(ours) { fAll.setAttribute('aria-pressed', String(!ours)); fOurs.setAttribute('aria-pressed', String(ours)); document.body.classList.toggle('only-ours', ours); }
+fAll.addEventListener('click', () => setFilter(false));
+fOurs.addEventListener('click', () => setFilter(true));
+
+/* ── knowledge ──────────────────────────────────────── */
+const H = (lvl, t, used, q) => `<span class="q ${q ? '' : ''}" ${q ? `data-q="${q}"` : ''}>${used ? `<span class="use">${used}</span>` : ''}<span class="h"><span class="hm">${'#'.repeat(lvl)} </span>${t}</span></span>`;
+const files = {
+  crowns: { meta: 'Edited 30 Sep by Office manager · reviewed by Dr. Shah', body: () =>
+`<span class="h"><span class="hm"># </span>Crowns</span>
+<span class="bq">&gt; General answers only. The reason a specific patient needs a crown always comes from their chart, never from this file.</span>
+
+<span class="q" data-q="why"><span class="use">4 replies this week</span><span class="h"><span class="hm">## </span>Why do I need a crown?</span>
+A crown is a cap that covers the whole tooth, so biting pressure is spread evenly instead of landing on the weakened walls.</span>
+<span class="q" data-q="last"><span class="use">1 reply</span><span class="h"><span class="hm">## </span>How long does a crown last?</span>
+Most last 10–15 years with normal brushing, flossing and check-ups.</span>
+<span class="q" data-q="alt"><span class="use">1 handoff</span><span class="h"><span class="hm">## </span>Could a filling work instead?</span>
+<span class="rule">→ Ask the dentist.</span> Don't answer from this file.</span>
+<span class="q" data-q="wait"><span class="use">—</span><span class="h"><span class="hm">## </span>What happens if I wait?</span>
+<span class="rule">→ Ask the dentist.</span> Timing depends on the tooth.</span>` },
+  appointment: { meta: 'Edited 2 Oct by Dr. Bell', body: () =>
+`<span class="h"><span class="hm"># </span>The crown appointment</span>
+
+<span class="q" data-q="visit"><span class="use">2 replies this week</span><span class="h"><span class="hm">## </span>What happens at the appointment?</span>
+The first visit takes about 90 minutes: the tooth is numbed, shaped, scanned, and you leave with a temporary crown. A short second visit about two weeks later fits the permanent one.</span>
+<span class="q" data-q="hurt"><span class="use">—</span><span class="h"><span class="hm">## </span>Will it hurt?</span>
+The area is numbed first. Some soreness for a few days is normal.</span>` },
+  scheduling: { meta: 'Edited 30 Sep by Office manager', body: () =>
+`<span class="h"><span class="hm"># </span>Scheduling</span>
+<span class="bq">&gt; Rules the follow-up uses when offering times.</span>
+
+<span class="h"><span class="hm">## </span>Crown preparation</span>
+- 90 minutes with the treating dentist
+- Offer times at least 24 hours out
+- Respect the patient's preferred time of day
+
+<span class="h"><span class="hm">## </span>Dentist discussion</span>
+- 20 minutes, phone or in office
+- Book with the treating dentist only` },
+  costs: { meta: 'Draft · not used in replies yet', body: () =>
+`<span class="h"><span class="hm"># </span>Costs &amp; insurance</span>
+<span class="bq">&gt; Draft. The follow-up won't use this file until it's published.</span>
+
+<span class="h"><span class="hm">## </span>How much will it cost?</span>
+<span class="rule">→ Front desk.</span> Transfer to a person with the treatment code.` },
+};
+const previews = {
+  why: (p) => `${C(p.reason)} ${F('A crown is a cap that covers the whole tooth, so biting pressure is spread evenly instead of landing on the weakened walls.')}`,
+  last: (p) => `${F('Most crowns last 10–15 years with normal brushing, flossing and check-ups.')}`,
+  alt: (p) => `That’s a good question for ${C(p.dr)} directly. ${C(`${p.dr}’s note explains why a crown was recommended`)} but doesn’t cover other options, so ${F('I won’t guess')}. Would a 20-minute call with ${p.dr} help?`,
+  wait: (p) => `${C('Your chart doesn’t say how soon this needs doing')}, and ${F('timing depends on the tooth')}. Would a 20-minute call with ${p.dr} help?`,
+  visit: (p) => `${F('The first visit takes about 90 minutes: the tooth is numbed, shaped, scanned, and you leave with a temporary crown.')} With ${C(p.dr)}, the next opening that fits ${C(p.pref)} is Fri 16 Oct, 10:00.`,
+  hurt: () => `${F('The area is numbed first. Some soreness for a few days is normal.')}`,
+};
+const pvData = {
+  maya: { dr: 'Dr. Shah', pref: 'your preference for mornings', reason: 'Dr. Shah noted a large, older filling on #30 with a crack line, and that it’s sensitive when you chew.' },
+  daniel: { dr: 'Dr. Shah', pref: 'your preference for afternoons', reason: 'Dr. Shah noted that #3 had a root canal last year and now has a large filling. A crown protects it.' },
+};
+let file = 'crowns', q = 'why';
+function renderMd() {
+  document.getElementById('mdName').textContent = (file === 'appointment' ? 'the-appointment' : file) + '.md';
+  document.getElementById('mdMeta').textContent = files[file].meta;
+  const src = document.getElementById('mdSrc');
+  src.innerHTML = files[file].body();
+  src.querySelectorAll('.q').forEach((el) => el.classList.toggle('sel', el.dataset.q === q));
+  renderPreview();
+}
+function renderPreview() {
+  const p = pvData[document.getElementById('pvPatient').value];
+  const out = document.getElementById('pvReply');
+  const help = document.getElementById('pvHelp');
+  if (previews[q] && document.querySelector(`#mdSrc [data-q="${q}"]`)) {
+    out.innerHTML = previews[q](p);
+    help.textContent = 'The reply this patient would get to:  “' + document.querySelector(`#mdSrc [data-q="${q}"] .h`).textContent.replace(/^#+\s/, '') + '”';
+    out.parentElement.hidden = false;
+  } else {
+    out.parentElement.hidden = true;
+    help.textContent = file === 'costs' ? 'Drafts are never used in replies.' : 'Click a question in the file to see the reply this patient would get.';
+  }
+}
+document.querySelectorAll('.tree button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.tree button').forEach((x) => x.setAttribute('aria-current', String(x === b)));
+  file = b.dataset.file;
+  q = { crowns: 'why', appointment: 'visit', scheduling: null, costs: null }[file];
+  renderMd();
+}));
+document.getElementById('mdSrc').addEventListener('click', (e) => { const el = e.target.closest('[data-q]'); if (el) { q = el.dataset.q; renderMd(); } });
+document.getElementById('pvPatient').addEventListener('change', renderPreview);
+renderMd();
+</script>
+</body>
+</html>
