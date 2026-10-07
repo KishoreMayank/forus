@@ -44,7 +44,10 @@ export function DemoGuide() {
   const { state, ui, setUi } = useStore();
   const [expanded, setExpanded] = useState(false);
   const doneFlags = MAYA.map((st) => st.done(state));
-  const current = doneFlags.indexOf(false);
+  // Current step = the one after the furthest completed step, so going off-script never strands the guide.
+  const furthest = doneFlags.lastIndexOf(true);
+  const current = furthest + 1 < MAYA.length ? furthest + 1 : -1;
+  const skipped = (i: number) => !doneFlags[i] && i < furthest;
   const doneCount = doneFlags.filter(Boolean).length;
   const go = (id: string) => setUi({ selectedId: id, page: 'worklist' });
   const step = current >= 0 ? MAYA[current] : null;
@@ -65,7 +68,7 @@ export function DemoGuide() {
         <div className="guide-k">
           <ListChecks size={14} aria-hidden /> Demo guide
           <span className="guide-dots" aria-label={`${doneCount} of ${MAYA.length} steps done`}>
-            {doneFlags.map((d, i) => <span key={i} className={d ? 'on' : i === current ? 'cur' : ''} />)}
+            {doneFlags.map((d, i) => <span key={i} className={d || skipped(i) ? 'on' : i === current ? 'cur' : ''} />)}
           </span>
         </div>
         {step ? (
@@ -96,9 +99,9 @@ export function DemoGuide() {
             <div className="guide-k">Main journey · Maya · about 4 minutes</div>
             <ol className="guide-steps">
               {MAYA.map((st, i) => (
-                <li key={st.title} className={doneFlags[i] ? 'is-done' : i === current ? 'is-current' : ''}>
+                <li key={st.title} className={doneFlags[i] ? 'is-done' : i === current ? 'is-current' : skipped(i) ? 'is-skipped' : ''}>
                   <span className="gs-mark">{doneFlags[i] ? <Check size={11} aria-hidden /> : i + 1}</span>
-                  <span className="gs-title">{st.title}</span>
+                  <span className="gs-title">{st.title}{skipped(i) && <span className="muted"> · skipped</span>}</span>
                 </li>
               ))}
             </ol>

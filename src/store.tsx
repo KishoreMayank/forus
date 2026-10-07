@@ -91,7 +91,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             : a.type === 'practiceCancel' ? 'Cancellation received from practice schedule'
             : a.type === 'recordCompletion' ? 'Completion recorded in practice record'
             : 'Last event replayed';
-          const detail = a.type === 'replayLast' ? 'Duplicate detected by idempotency key; nothing re-sent.' : summarize(cur.state, next) ?? 'No actions were due.';
+          const lw = next.lastWake;
+          const detail =
+            a.type === 'replayLast' && lw
+              ? `“${lw.wake.label}” for ${next.patients[next.cases[lw.caseId].patientId].firstName} was already processed; nothing re-sent. See their timeline.`
+              : summarize(cur.state, next) ?? 'No actions were due.';
           queueMicrotask(() => showToast(label, detail));
         }
         return { ...cur, state: next };

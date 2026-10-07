@@ -85,10 +85,10 @@ export function Worklist() {
                     <div className="row-main">
                       <div className="row-top">
                         <span className="row-name">{p.name}</span>
-                        {c.script !== 'background' && <span className="demo-tag">{c.script === 'main' ? 'Main' : c.script === 'scheduling' ? 'Scheduling' : 'Clarify'}</span>}
                         <Pill tone={st.tone}>{st.label}</Pill>
                       </div>
                       <div className="row-sub">
+                        {c.script !== 'background' && <span className="demo-tag">{c.script === 'main' ? 'Main journey' : c.script === 'scheduling' ? 'Scheduling only' : 'Needs clarification'}</span>}
                         {r.treatment} · {r.tooth.split(' ·')[0]} <span className="dot">·</span> Barrier: {BARRIER[c.barrier]}
                       </div>
                       <div className="row-meta">
