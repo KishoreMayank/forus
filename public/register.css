@@ -520,3 +520,10 @@ dialog p.pay-fine{font-size:10px;margin:4px 0 18px}
 .patient-header-actions .demo-reset-inline{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;min-height:30px;flex:0 0 30px;padding:0;border:1px solid #e0e7e1;border-radius:6px;background:#fff;color:#819187}
 .demo-reset-inline svg{width:15px;height:15px}
 .patient-header-actions .demo-reset-inline:hover{background:#f1f6f2;border-color:#b6c9bb;color:#476650}
+
+.thinking-message{align-self:flex-end;display:flex;align-items:center;gap:9px;padding:12px 14px;border:1px solid #dce8df;border-radius:13px 13px 3px 13px;background:#eaf2ec;color:#6e8275;font-size:11px;line-height:1.5}
+.thinking-dots{display:flex;gap:3px;align-items:center}
+.thinking-dots i{width:4px;height:4px;border-radius:50%;background:#82998a;animation:thinking-pulse 1s infinite ease-in-out}
+.thinking-dots i:nth-child(2){animation-delay:.15s}.thinking-dots i:nth-child(3){animation-delay:.3s}
+@keyframes thinking-pulse{0%,70%,100%{opacity:.35;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){.thinking-dots i{animation:none;opacity:.7}}
