@@ -84,12 +84,14 @@
   .q { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; align-items: center; width: 100%; text-align: left; padding: 14px 4px; border-bottom: 1px solid var(--rule); }
   .q:hover { background: var(--wash); }
   .q .name { font-weight: 500; }
+  .q .tx { font-size: 13px; color: var(--slate); }
+  .q .tx b { color: var(--ink); font-weight: 500; }
+  .q .tx .since { color: var(--faint); margin-left: 4px; }
   .track { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-  .segs { display: flex; gap: 3px; }
-  .segs i { width: 18px; height: 4px; border-radius: 2px; background: var(--rule); }
-  .segs i.on { background: var(--teal); }
-  .segs.amber i.on { background: var(--amber); }
-  .segs.paused i.on { background: var(--faint); }
+  .sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex: none; }
+  .sdot.amber { background: var(--amber); }
+  .sdot.paused { background: transparent; border: 1.5px solid var(--faint); }
+  .sdot.booked { background: var(--ink); }
   .q .nx { font-size: 13px; color: var(--slate); text-align: right; }
   .q .nx b { color: var(--ink); font-weight: 500; }
   .q .nx.amber b { color: var(--amber); }
@@ -243,7 +245,7 @@
     .stg .n { font-size: 20px; }
     .stg .l { font-size: 11px; }
     .q { grid-template-columns: 1fr auto; gap: 4px 12px; }
-    .q .chart-line { grid-column: 1; }
+    .q .tx { grid-column: 1; }
     .panel-body { grid-template-columns: 1fr; overflow: auto; }
     .side { border-left: 0; border-top: 1px solid var(--rule); }
     .scrim, .panel { top: 0; }
@@ -261,7 +263,7 @@
 <header class="doc">
   <div>
     <h1>Treatment follow-up · v2</h1>
-    <p>Patients shows progress by stage, grouped into in progress and booked. FAQs live as files. Each conversation shows which sentences came from the chart and which from an FAQ. Integrations splits into patient charts, treatment history, scheduling and texting. The scheduling calendar opens as a pop-up. Everything is clickable.</p>
+    <p>Patients is grouped into in progress and booked. FAQs live as files. Each conversation shows which sentences came from the chart and which from an FAQ. Integrations splits into patient charts, treatment history, scheduling and texting. The scheduling calendar opens as a pop-up. Everything is clickable.</p>
   </div>
   <label><input type="checkbox" id="notesToggle" checked /> Show notes</label>
 </header>
@@ -291,16 +293,9 @@
     <section class="view" id="v-queue">
       <div class="view-head">
         <h2>Patients</h2>
-        <span class="sub">Unscheduled treatment plans from the last 90 days</span>
+        <span class="sub">From patient charts: treatment recommended in the last 90 days <span class="mk">2</span></span>
       </div>
 
-      <div class="stages" aria-label="Progress by stage">
-        <div class="stg"><div class="n">2</div><div class="l">Found in charts <span class="mk">2</span></div></div>
-        <div class="stg"><div class="n">2</div><div class="l">Texted</div></div>
-        <div class="stg"><div class="n">3</div><div class="l">In conversation</div></div>
-        <div class="stg after"><div class="n">3</div><div class="l">Booked</div></div>
-        <div class="stg after"><div class="n">1</div><div class="l">Completed</div></div>
-      </div>
 
       <div class="queue">
         <div class="queue-h"><span class="grp">In progress <span class="cnt">7</span> <span class="mk">3</span></span><span>Next step</span></div>
@@ -322,6 +317,8 @@
         <nav class="tree" aria-label="FAQ files">
           <div class="dir">faq/ <span class="mk">8</span></div>
           <button data-file="crowns" aria-current="true">crowns.md</button>
+          <button data-file="rootcanals">root-canals.md</button>
+          <button data-file="deepclean">deep-cleaning.md</button>
           <button data-file="appointment">the-appointment.md</button>
           <button data-file="scheduling">scheduling.md</button>
           <button data-file="costs">costs.md <span class="draft">draft</span></button>
@@ -332,10 +329,7 @@
         </div>
         <aside class="preview">
           <div class="k">Preview with a chart <span class="mk">7</span></div>
-          <select id="pvPatient" aria-label="Preview patient">
-            <option value="maya">Maya Chen · #30 Crown</option>
-            <option value="daniel">Daniel Okafor · #3 Crown</option>
-          </select>
+          <select id="pvPatient" aria-label="Preview patient"></select>
           <p class="help" id="pvHelp">Click a question in the file to see the reply this patient would get.</p>
           <div class="m" style="max-width:100%"><div class="b" id="pvReply"></div></div>
           <div class="legend"><span><i style="background:var(--chart-wash);box-shadow:inset 0 -1.5px 0 #9CC7AA"></i>From the chart</span><span><i style="background:var(--faq-wash);box-shadow:inset 0 -1.5px 0 #A3BCE0"></i>From this file</span></div>
@@ -457,8 +451,8 @@
 
   <ol class="notes" data-for="queue">
     <li><span class="mk">1</span><span><b>Connections in one line.</b> <span class="t">&ldquo;Synced 9:04 AM&rdquo; is all staff need. Clicking it lists the four sources and what each is used for. A failed sync would turn this amber.</span></span></li>
-    <li><span class="mk">2</span><span><b>Stages are the headline.</b> <span class="t">Five numbers show progress at a glance, starting with the chart. Booked and Completed are greyed because that&rsquo;s the practice&rsquo;s usual workflow, not the queue&rsquo;s.</span></span></li>
-    <li><span class="mk">3</span><span><b>In progress comes first, four facts per row.</b> <span class="t">Who, what treatment, which stage, and what happens next. These are the patients the tool is still working on. Everything else is one click away in the patient panel.</span></span></li>
+    <li><span class="mk">2</span><span><b>Where the list comes from, in one line.</b> <span class="t">Every patient here has treatment in their chart and nothing booked. There are only two states: in progress or booked. No progress bar, because nobody knows in advance how many steps a patient will take.</span></span></li>
+    <li><span class="mk">3</span><span><b>In progress comes first, three facts per row.</b> <span class="t">Who and what treatment, with which dentist; what&rsquo;s going on now; and what happens next. The dot only changes when a person is involved (amber) or the patient asked to pause (hollow).</span></span></li>
     <li><span class="mk">4</span><span><b>Booked sits below, quieter.</b> <span class="t">Same row shape, greyed names. Once someone is booked the only remaining step is a reminder. The appointment book opens from here when you need it.</span></span></li>
   </ol>
   <ol class="notes" data-for="knowledge" hidden>
@@ -468,7 +462,7 @@
   <ol class="notes" data-for="integrations" hidden>
     <li><span class="mk">9</span><span><b>Three practice systems, named for what staff know.</b> <span class="t">Patient charts, treatment history and scheduling each answer one question: who needs follow-up, is it finished, and when can they come in. Texting is how the tool reaches patients.</span></span></li>
     <li><span class="mk">10</span><span><b>&ldquo;Writes: Nothing&rdquo; is said out loud.</b> <span class="t">Charts and history are read-only. Only Scheduling writes, and only the appointments patients choose. That&rsquo;s the line an owner checks before signing off.</span></span></li>
-    <li><span class="mk">11</span><span><b>A sync log in plain words.</b> <span class="t">&ldquo;Found 2 new treatment plans&rdquo; ties the connection to the Queue&rsquo;s &ldquo;Found in charts&rdquo; count, so staff can see where new patients came from.</span></span></li>
+    <li><span class="mk">11</span><span><b>A sync log in plain words.</b> <span class="t">&ldquo;Found 2 new treatment plans&rdquo; ties the connection to the two new patients at the top of Patients, so staff can see where new patients came from.</span></span></li>
     <li><span class="mk">12</span><span><b>Each missing integration says what it would unlock.</b> <span class="t">Insurance is linked to the costs.md draft, which explains why that FAQ isn&rsquo;t live yet. Phone calls are marked planned, not offered.</span></span></li>
     <li><span class="mk">13</span><span><b>The calendar belongs to Scheduling.</b> <span class="t">It opens as a pop-up from the Scheduling row, or from the Booked group on Patients. It&rsquo;s a read-only view of the real appointment book, with follow-up bookings coloured.</span></span></li>
     <li><span class="mk">14</span><span><b>One filter, nothing else.</b> <span class="t">&ldquo;Booked by follow-up&rdquo; fades the rest of the book. A &ldquo;New&rdquo; tag marks bookings made since you last looked, so a busy desk notices them without a notification.</span></span></li>
@@ -477,32 +471,30 @@
 
 <script>
 /* ── data ───────────────────────────────────────────── */
-const STAGES = ['Found', 'Texted', 'Conversation', 'Booked', 'Completed'];
 const patients = {
-  maya:   { name: 'Maya Chen', tooth: '#30', dr: 'Dr. Shah', date: '28 Sep', stage: 2, stageText: 'Asked why she needs it', next: 'Thu 15 Oct', nextText: 'follow up if no reply' },
-  elena:  { name: 'Elena Ruiz', tooth: '#19', dr: 'Dr. Bell', date: '24 Sep', stage: 2, tone: 'amber', stageText: 'Question for Dr. Bell', next: 'Thu 22 Oct', nextText: 'call with Dr. Bell' },
-  aisha:  { name: 'Aisha Rahman', tooth: '#31', dr: 'Dr. Shah', date: '16 Sep', stage: 2, tone: 'paused', stageText: 'Paused at her request', next: 'Thu 22 Oct', nextText: 'check back' },
-  daniel: { name: 'Daniel Okafor', tooth: '#3', dr: 'Dr. Shah', date: '21 Sep', stage: 1, stageText: 'No reply yet', next: 'Thu 15 Oct', nextText: 'follow up' },
-  james:  { name: 'James Whitfield', tooth: '#18', dr: 'Dr. Bell', date: '14 Sep', stage: 1, stageText: 'No reply to 2 texts', next: 'Today', nextText: 'last follow-up' },
-  nora:   { name: 'Nora Kim', tooth: '#29', dr: 'Dr. Bell', date: '29 Sep', stage: 0, stageText: 'Found this morning', next: 'Today 10:00', nextText: 'first text' },
-  leo:    { name: 'Leo Brandt', tooth: '#15', dr: 'Dr. Shah', date: '30 Sep', stage: 0, stageText: 'Found this morning', next: 'Tue 13 Oct', nextText: 'first text' },
+  maya:   { name: 'Maya Chen', tx: 'Crown', tooth: '#30', dr: 'Dr. Shah', date: '28 Sep', stage: 2, stageText: 'Asked why she needs it', next: 'Thu 15 Oct', nextText: 'follow up if no reply' },
+  elena:  { name: 'Elena Ruiz', tx: 'Crown', tooth: '#19', dr: 'Dr. Bell', date: '24 Sep', stage: 2, tone: 'amber', stageText: 'Question for Dr. Bell', next: 'Thu 22 Oct', nextText: 'call with Dr. Bell' },
+  aisha:  { name: 'Aisha Rahman', tx: 'Filling', tooth: '#31', dr: 'Dr. Shah', date: '16 Sep', stage: 2, tone: 'paused', stageText: 'Paused at her request', next: 'Thu 22 Oct', nextText: 'check back' },
+  daniel: { name: 'Daniel Okafor', tx: 'Crown', tooth: '#3', dr: 'Dr. Shah', date: '21 Sep', stage: 1, stageText: 'No reply yet', next: 'Thu 15 Oct', nextText: 'follow up' },
+  james:  { name: 'James Whitfield', tx: 'Root canal', tooth: '#18', dr: 'Dr. Bell', date: '14 Sep', stage: 1, stageText: 'No reply to 2 texts', next: 'Today', nextText: 'last follow-up' },
+  nora:   { name: 'Nora Kim', tx: 'Deep cleaning', tooth: '#29', dr: 'Dr. Bell', date: '29 Sep', stage: 0, stageText: 'Found this morning', next: 'Today 10:00', nextText: 'first text' },
+  leo:    { name: 'Leo Brandt', tx: 'Implant', tooth: '#15', dr: 'Dr. Shah', date: '30 Sep', stage: 0, stageText: 'Found this morning', next: 'Tue 13 Oct', nextText: 'first text' },
 };
 const order = ['nora', 'leo', 'daniel', 'james', 'maya', 'elena', 'aisha'];
 Object.assign(patients, {
-  robert: { name: 'Robert Lindqvist', tooth: '#14', dr: 'Dr. Shah', date: '18 Sep', stage: 3, stageText: 'Booked Thu 15 Oct, 1:30', next: 'Wed 14 Oct', nextText: 'reminder' },
-  sam:    { name: 'Sam Patel', tooth: '#4', dr: 'Dr. Shah', date: '22 Sep', stage: 3, stageText: 'Booked Fri 16 Oct, 10:00', next: 'Thu 15 Oct', nextText: 'reminder' },
-  hana:   { name: 'Hana Sato', tooth: '#13', dr: 'Dr. Bell', date: '25 Sep', stage: 3, stageText: 'Booked Tue 20 Oct, 8:00', next: 'Mon 19 Oct', nextText: 'reminder' },
+  robert: { name: 'Robert Lindqvist', tx: 'Bridge', tooth: '#14', dr: 'Dr. Shah', date: '18 Sep', stage: 3, stageText: 'Booked Thu 15 Oct, 1:30', next: 'Wed 14 Oct', nextText: 'reminder' },
+  sam:    { name: 'Sam Patel', tx: 'Filling', tooth: '#4', dr: 'Dr. Shah', date: '22 Sep', stage: 3, stageText: 'Booked Fri 16 Oct, 10:00', next: 'Thu 15 Oct', nextText: 'reminder' },
+  hana:   { name: 'Hana Sato', tx: 'Deep cleaning', tooth: '#13', dr: 'Dr. Bell', date: '25 Sep', stage: 3, stageText: 'Booked Tue 20 Oct, 8:00', next: 'Mon 19 Oct', nextText: 'reminder' },
 });
 const bookedOrder = ['robert', 'sam', 'hana'];
 
 const qrows = document.getElementById('qrows'), brows = document.getElementById('brows');
 const rowHtml = (id) => {
   const p = patients[id];
-  const segs = STAGES.map((_, i) => `<i class="${i <= p.stage ? 'on' : ''}"></i>`).join('');
   return `<button class="q" data-p="${id}">
     <span class="name">${p.name}</span>
-    <span class="chart-line"><b>${p.tooth}</b> · Crown · ${p.dr}</span>
-    <span class="track"><span class="segs ${p.tone || ''}">${segs}</span>${p.stageText}</span>
+    <span class="tx"><b>${p.tx}</b> · ${p.dr}</span>
+    <span class="track"><span class="sdot ${p.stage === 3 ? 'booked' : p.tone || ''}"></span>${p.stageText}</span>
     <span class="nx ${p.tone === 'amber' ? 'amber' : ''}"><b>${p.next}</b> · ${p.nextText}</span>
   </button>`;
 };
@@ -551,20 +543,29 @@ const convos = {
     next: '<b>Thu 22 Oct, 12:30</b><br>Call with Dr. Bell. Question already shared with the team.',
   },
 };
+const TX = {
+  'Crown': { a: 'a crown', code: 'D2740 Crown', len: '90 minutes', file: 'crowns.md' },
+  'Filling': { a: 'a filling', code: 'D2392 Composite, 2 surfaces', len: '45 minutes', file: 'fillings.md' },
+  'Root canal': { a: 'a root canal', code: 'D3330 Root canal, molar', len: '90 minutes', file: 'root-canals.md' },
+  'Deep cleaning': { a: 'a deep cleaning', code: 'D4341 Scaling & root planing', len: '90 minutes', file: 'deep-cleaning.md' },
+  'Implant': { a: 'an implant', code: 'D6010 Implant placement', len: '2 hours', file: 'implants.md' },
+  'Bridge': { a: 'a bridge', code: 'D6240 Bridge, 3 units', len: '2 hours', file: 'bridges.md' },
+};
 function generic(p) {
+  const t = TX[p.tx];
   if (p.stage === 3) return {
     msgs: [
-      ['co', 'Earlier', `Hi ${p.name.split(' ')[0]}, this is Harbor Dental. ${C(`At your ${p.date} visit, ${p.dr} recommended a crown for tooth ${p.tooth}`)}. Would you like to book a time?`],
+      ['co', 'Earlier', `Hi ${p.name.split(' ')[0]}, this is Harbor Dental. ${C(`At your ${p.date} visit, ${p.dr} recommended ${t.a}`)}. Would you like to book a time?`],
       ['pt', 'Earlier', 'Yes please'],
-      ['co', 'Earlier', `You’re booked: ${p.stageText.replace('Booked ', '')} with ${p.dr}. ${F('Plan for about 90 minutes.')} I’ll send a reminder the day before.`],
+      ['co', 'Earlier', `You’re booked: ${p.stageText.replace('Booked ', '')} with ${p.dr}. ${F(`Plan for about ${t.len}.`)} I’ll send a reminder the day before.`],
     ],
-    chart: { title: `Chart · ${p.dr} · ${p.date}`, text: `${p.tooth}: <mark>Recommend crown.</mark>`, foot: 'Treatment plan: D2740 Crown' },
-    faq: { title: 'scheduling.md › Crown preparation', text: '<mark>90 minutes with the treating dentist</mark>', foot: 'Scheduling rule' },
+    chart: { title: `Chart · ${p.dr} · ${p.date}`, text: `${p.tooth}: <mark>Recommend ${p.tx.toLowerCase()}.</mark>`, foot: `Treatment plan: ${t.code}` },
+    faq: { title: 'scheduling.md › Appointment lengths', text: `<mark>${p.tx}: ${t.len} with the treating dentist</mark>`, foot: 'Scheduling rule' },
     next: `<b>${p.next}</b><br>Send a reminder. Nothing else until the crown is charted as seated.`,
   };
   return {
-    msgs: [['co', p.stage === 0 ? 'Scheduled' : 'Mon 9:00', `Hi ${p.name.split(' ')[0]}, this is Harbor Dental. ${C(`At your ${p.date} visit, ${p.dr} recommended a crown for tooth ${p.tooth}`)}. We haven’t seen it on the schedule yet. Would you like to book a time, or do you have questions first?`]],
-    chart: { title: `Chart · ${p.dr} · ${p.date}`, text: `${p.tooth}: <mark>Recommend crown.</mark>`, foot: 'Treatment plan: D2740 Crown' },
+    msgs: [['co', p.stage === 0 ? 'Scheduled' : 'Mon 9:00', `Hi ${p.name.split(' ')[0]}, this is Harbor Dental. ${C(`At your ${p.date} visit, ${p.dr} recommended ${t.a}`)}. We haven’t seen it on the schedule yet. Would you like to book a time, or do you have questions first?`]],
+    chart: { title: `Chart · ${p.dr} · ${p.date}`, text: `${p.tooth}: <mark>Recommend ${p.tx.toLowerCase()}.</mark>`, foot: `Treatment plan: ${t.code}` },
     faq: null,
     next: `<b>${p.next}</b><br>${p.nextText[0].toUpperCase() + p.nextText.slice(1)}.`,
   };
@@ -575,7 +576,7 @@ function openPanel(id) {
   const p = patients[id];
   const c = convos[id] || generic(p);
   document.getElementById('pName').textContent = p.name;
-  document.getElementById('pChart').innerHTML = `<b>${p.tooth}</b> · D2740 Crown · ${p.dr} · ${p.date}`;
+  document.getElementById('pChart').innerHTML = `${p.tx} · ${p.dr}`;
   document.getElementById('pConvo').innerHTML =
     `<div class="legend"><span><i style="background:var(--chart-wash);box-shadow:inset 0 -1.5px 0 #9CC7AA"></i>From the chart</span><span><i style="background:var(--faq-wash);box-shadow:inset 0 -1.5px 0 #A3BCE0"></i>From an FAQ</span></div>` +
     c.msgs.map(([who, t, html]) => `<div class="m ${who === 'pt' ? 'pt' : ''}"><div class="meta">${who === 'pt' ? p.name.split(' ')[0] : 'Harbor Dental'} · ${t}</div><div class="b">${html}</div></div>`).join('');
@@ -605,12 +606,12 @@ const weeks = [
   { label: '12 – 16 Oct', days: ['Mon 12', 'Tue 13', 'Wed 14', 'Thu 15', 'Fri 16'], today: 0, appts: [
     [0, 8, 1.5, 'busy'], [0, 13.5, 1, 'busy'], [1, 10, 1.5, 'busy'], [1, 8, 1, 'busy'], [1, 15.5, 1.5, 'busy'],
     [2, 10, 0.5, 'busy'], [2, 13.5, 1.5, 'busy'], [3, 8, 1.5, 'busy'], [3, 10, 1, 'busy'],
-    [3, 13.5, 1.5, 'ours', 'Robert Lindqvist', 'Crown #14 · Dr. Shah'], [4, 8, 1.5, 'busy'], [4, 13.5, 1, 'busy'],
-    [4, 10, 1.5, 'ours', 'Sam Patel', 'Crown #4 · Dr. Shah', true],
+    [3, 13.5, 2, 'ours', 'Robert Lindqvist', 'Bridge · Dr. Shah'], [4, 8, 1.5, 'busy'], [4, 13.5, 1, 'busy'],
+    [4, 10, 0.75, 'ours', 'Sam Patel', 'Filling · Dr. Shah', true],
   ]},
   { label: '19 – 23 Oct', days: ['Mon 19', 'Tue 20', 'Wed 21', 'Thu 22', 'Fri 23'], today: -1, appts: [
     [0, 8, 1.5, 'busy'], [0, 10, 1.5, 'busy'], [1, 13.5, 1.5, 'busy'], [2, 8, 1.5, 'busy'], [2, 15.5, 1.5, 'busy'],
-    [1, 8, 1.5, 'ours', 'Hana Sato', 'Crown #13 · Dr. Bell'], [3, 10, 1.5, 'busy'], [4, 13.5, 1.5, 'busy'],
+    [1, 8, 1.5, 'ours', 'Hana Sato', 'Deep cleaning · Dr. Bell'], [3, 10, 1.5, 'busy'], [4, 13.5, 1.5, 'busy'],
     [3, 12.5, 0.33, 'ours consult', 'Elena Ruiz', 'Call · Dr. Bell'],
   ]},
 ];
@@ -668,14 +669,37 @@ The area is numbed first. Some soreness for a few days is normal.</span>` },
 `<span class="h"><span class="hm"># </span>Scheduling</span>
 <span class="bq">&gt; Rules the follow-up uses when offering times.</span>
 
-<span class="h"><span class="hm">## </span>Crown preparation</span>
-- 90 minutes with the treating dentist
+<span class="h"><span class="hm">## </span>Appointment lengths</span>
+- Crown, root canal, deep cleaning: 90 minutes
+- Filling: 45 minutes
+- Implant, bridge: 2 hours
+
+<span class="h"><span class="hm">## </span>Rules</span>
+- Book with the treating dentist (hygienist for deep cleaning)
 - Offer times at least 24 hours out
 - Respect the patient's preferred time of day
 
 <span class="h"><span class="hm">## </span>Dentist discussion</span>
 - 20 minutes, phone or in office
 - Book with the treating dentist only` },
+  rootcanals: { meta: 'Edited 28 Sep by Dr. Bell', body: () =>
+`<span class="h"><span class="hm"># </span>Root canals</span>
+<span class="bq">&gt; General answers only. Why a patient needs one comes from their chart.</span>
+
+<span class="q" data-q="rc_why"><span class="use">1 reply this week</span><span class="h"><span class="hm">## </span>Why do I need a root canal?</span>
+When the nerve inside a tooth is inflamed or infected, a root canal removes it and seals the tooth so it can be kept instead of pulled.</span>
+<span class="q" data-q="rc_hurt"><span class="use">—</span><span class="h"><span class="hm">## </span>Does it hurt?</span>
+It feels much like a filling. The tooth is numbed first, and most people are back to normal the next day.</span>
+<span class="q" data-q="rc_pull"><span class="use">—</span><span class="h"><span class="hm">## </span>Can't I just have it pulled?</span>
+<span class="rule">→ Ask the dentist.</span> Depends on the tooth.</span>` },
+  deepclean: { meta: 'Edited 1 Oct by hygiene team', body: () =>
+`<span class="h"><span class="hm"># </span>Deep cleaning</span>
+<span class="bq">&gt; Also called scaling and root planing.</span>
+
+<span class="q" data-q="dc_what"><span class="use">2 replies this week</span><span class="h"><span class="hm">## </span>What is a deep cleaning?</span>
+It cleans below the gumline, where a regular cleaning can't reach, so inflamed gums can heal. It's usually done in one or two visits with numbing.</span>
+<span class="q" data-q="dc_why"><span class="use">—</span><span class="h"><span class="hm">## </span>Why isn't a regular cleaning enough?</span>
+<span class="rule">→ Ask the dentist.</span> It depends on the measurements in your chart.</span>` },
   costs: { meta: 'Draft · not used in replies yet', body: () =>
 `<span class="h"><span class="hm"># </span>Costs &amp; insurance</span>
 <span class="bq">&gt; Draft. The follow-up won't use this file until it's published.</span>
@@ -690,14 +714,26 @@ const previews = {
   wait: (p) => `${C('Your chart doesn’t say how soon this needs doing')}, and ${F('timing depends on the tooth')}. Would a 20-minute call with ${p.dr} help?`,
   visit: (p) => `${F('The first visit takes about 90 minutes: the tooth is numbed, shaped, scanned, and you leave with a temporary crown.')} With ${C(p.dr)}, the next opening that fits ${C(p.pref)} is Fri 16 Oct, 10:00.`,
   hurt: () => `${F('The area is numbed first. Some soreness for a few days is normal.')}`,
+  rc_why: (p) => `${C(p.reason)} ${F('A root canal removes the inflamed nerve and seals the tooth, so it can be kept instead of pulled.')}`,
+  rc_hurt: () => `${F('It feels much like a filling. The tooth is numbed first, and most people are back to normal the next day.')}`,
+  rc_pull: (p) => `${C('Your chart doesn’t say whether removing the tooth was discussed')}, so ${F('that’s a question for the dentist')}. Would a 20-minute call with ${C(p.dr)} help?`,
+  dc_what: (p) => `${C(p.reason)} ${F('A deep cleaning cleans below the gumline, where a regular cleaning can’t reach, so the gums can heal.')}`,
+  dc_why: (p) => `${C('Your chart has the measurements, but not an explanation of them')}, so ${F('that’s best answered by the dentist')}. Would a 20-minute call with ${C(p.dr)} help?`,
 };
 const pvData = {
-  maya: { dr: 'Dr. Shah', pref: 'your preference for mornings', reason: 'Dr. Shah noted a large, older filling on #30 with a crack line, and that it’s sensitive when you chew.' },
-  daniel: { dr: 'Dr. Shah', pref: 'your preference for afternoons', reason: 'Dr. Shah noted that #3 had a root canal last year and now has a large filling. A crown protects it.' },
+  maya: { dr: 'Dr. Shah', pref: 'your preference for mornings', reason: 'Dr. Shah noted a large, older filling with a crack line, and that it’s sensitive when you chew.' },
+  james: { dr: 'Dr. Bell', pref: 'mornings', reason: 'Dr. Bell noted a deep crack reaching the nerve of your lower left back tooth, and that it aches when you bite.' },
+  nora: { dr: 'Dr. Bell', pref: 'any time', reason: 'Dr. Bell’s notes show gum pockets of 5–6 mm in two areas, with some bleeding.' },
+  daniel: { dr: 'Dr. Shah', pref: 'your preference for afternoons', reason: 'Dr. Shah noted that the tooth had a root canal last year and now has a large filling. A crown protects it.' },
 };
 let file = 'crowns', q = 'why';
+const FILE_PATIENTS = { crowns: ['maya', 'daniel'], appointment: ['maya', 'daniel'], rootcanals: ['james'], deepclean: ['nora'], scheduling: ['maya'], costs: ['maya'] };
+function fillPatients() {
+  const sel = document.getElementById('pvPatient');
+  sel.innerHTML = FILE_PATIENTS[file].map((id) => `<option value="${id}">${patients[id].name} · ${patients[id].tx}</option>`).join('');
+}
 function renderMd() {
-  document.getElementById('mdName').textContent = (file === 'appointment' ? 'the-appointment' : file) + '.md';
+  document.getElementById('mdName').textContent = ({ appointment: 'the-appointment', rootcanals: 'root-canals', deepclean: 'deep-cleaning' }[file] || file) + '.md';
   document.getElementById('mdMeta').textContent = files[file].meta;
   const src = document.getElementById('mdSrc');
   src.innerHTML = files[file].body();
@@ -720,11 +756,13 @@ function renderPreview() {
 document.querySelectorAll('.tree button').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('.tree button').forEach((x) => x.setAttribute('aria-current', String(x === b)));
   file = b.dataset.file;
-  q = { crowns: 'why', appointment: 'visit', scheduling: null, costs: null }[file];
+  q = { crowns: 'why', appointment: 'visit', rootcanals: 'rc_why', deepclean: 'dc_what', scheduling: null, costs: null }[file];
+  fillPatients();
   renderMd();
 }));
 document.getElementById('mdSrc').addEventListener('click', (e) => { const el = e.target.closest('[data-q]'); if (el) { q = el.dataset.q; renderMd(); } });
 document.getElementById('pvPatient').addEventListener('change', renderPreview);
+fillPatients();
 renderMd();
 </script>
 </body>
