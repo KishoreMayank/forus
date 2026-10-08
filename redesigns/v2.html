@@ -101,9 +101,28 @@
 
   /* ── Patient panel ─────────────────────────────────────── */
   .scrim { position: absolute; inset: 52px 0 0 0; background: rgba(20,32,31,.18); z-index: 10; }
-  .panel { position: absolute; top: 52px; right: 0; bottom: 0; width: min(860px, 100%); background: var(--paper); border-left: 1px solid var(--rule); z-index: 11; display: flex; flex-direction: column; box-shadow: -12px 0 32px rgba(20,32,31,.08); }
+  .pt-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; transition: grid-template-columns .25s ease; }
+  .pt-layout.has-panel { grid-template-columns: minmax(0, 1fr) 460px; }
+  .has-panel .q { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 2px 16px; }
+  .has-panel .q .name { grid-column: 1; grid-row: 1; }
+  .has-panel .q .tx { grid-column: 1; grid-row: 2; }
+  .has-panel .q .track { grid-column: 2; grid-row: 1 / 3; }
+  .has-panel .q .nx, .has-panel .nx-h { display: none; }
+  .q.sel { background: var(--teal-wash); }
+  .panel { position: sticky; top: 16px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; margin-top: 26px; max-height: calc(100vh - 32px); overflow: auto; }
+  .panel .k { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
+  .p-tx { color: var(--slate); font-size: 13px; }
+  .p-info { display: grid; grid-template-columns: 110px 1fr; gap: 5px 12px; margin: 0; padding: 14px 20px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .p-info dt { color: var(--faint); }
+  .p-info dd { margin: 0; }
+  .p-sec { padding: 14px 20px; border-bottom: 1px solid var(--rule); }
+  .p-sec:last-child { border-bottom: 0; }
+  .panel .convo { padding: 0; overflow: visible; }
+  .panel .nextcard { background: var(--teal-wash); color: #17454C; border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .panel .nextcard b { font-weight: 600; }
+  .panel .acts { display: flex; gap: 6px; margin-top: 10px; }
   .scrim[hidden], .panel[hidden] { display: none; }
-  .panel-head { display: flex; align-items: flex-start; gap: 16px; padding: 20px 24px 16px; border-bottom: 1px solid var(--rule); }
+  .panel-head { display: flex; align-items: flex-start; gap: 16px; padding: 16px 20px 12px; border-bottom: 1px solid var(--rule); }
   .panel-head h3 { font-size: 18px; font-weight: 600; }
   .panel-head .x { margin-left: auto; font-size: 20px; color: var(--slate); width: 28px; height: 28px; border-radius: 6px; }
   .panel-head .x:hover { background: var(--wash); }
@@ -246,9 +265,8 @@
     .stg .l { font-size: 11px; }
     .q { grid-template-columns: 1fr auto; gap: 4px 12px; }
     .q .tx { grid-column: 1; }
-    .panel-body { grid-template-columns: 1fr; overflow: auto; }
-    .side { border-left: 0; border-top: 1px solid var(--rule); }
-    .scrim, .panel { top: 0; }
+    .pt-layout.has-panel { grid-template-columns: 1fr; }
+    .panel { position: static; }
     .cal { grid-template-columns: 40px repeat(5, minmax(64px, 1fr)); overflow-x: auto; }
     .kb { grid-template-columns: 1fr; margin: 16px -16px -20px; }
     .tree, .preview { border: 0; border-bottom: 1px solid var(--rule); }
@@ -297,13 +315,34 @@
       </div>
 
 
-      <div class="queue">
-        <div class="queue-h"><span class="grp">In progress <span class="cnt">7</span> <span class="mk">3</span></span><span>Next step</span></div>
-        <div id="qrows"></div>
-      </div>
-      <div class="queue">
-        <div class="queue-h"><span class="grp">Booked <span class="cnt">3</span> <span class="mk">4</span></span><button class="link" data-open-cal>Open calendar</button></div>
-        <div id="brows"></div>
+      <div class="pt-layout" id="ptLayout">
+        <div class="pt-list">
+          <div class="queue">
+            <div class="queue-h"><span class="grp">In progress <span class="cnt">7</span> <span class="mk">3</span></span><span class="nx-h">Next step</span></div>
+            <div id="qrows"></div>
+          </div>
+          <div class="queue">
+            <div class="queue-h"><span class="grp">Booked <span class="cnt">3</span> <span class="mk">4</span></span><button class="link" data-open-cal>Open calendar</button></div>
+            <div id="brows"></div>
+          </div>
+        </div>
+
+        <aside class="panel" id="panel" hidden aria-label="Patient">
+          <div class="panel-head">
+            <div>
+              <h3 id="pName">Maya Chen</h3>
+              <div class="p-tx" id="pChart"></div>
+            </div>
+            <button class="x" id="pClose" aria-label="Close patient">×</button>
+          </div>
+          <dl class="p-info" id="pInfo"></dl>
+          <div class="p-sec" id="pNext"></div>
+          <div class="p-sec">
+            <div class="k">Conversation</div>
+            <div class="convo" id="pConvo"></div>
+          </div>
+          <div class="p-sec" id="pSide"></div>
+        </aside>
       </div>
     </section>
 
@@ -432,21 +471,6 @@
       </div>
     </div>
 
-    <!-- PATIENT PANEL -->
-    <div class="scrim" id="scrim" hidden></div>
-    <aside class="panel" id="panel" hidden aria-label="Patient">
-      <div class="panel-head">
-        <div>
-          <h3 id="pName">Maya Chen</h3>
-          <div class="chart-line" id="pChart"></div>
-        </div>
-        <button class="x" id="pClose" aria-label="Close">×</button>
-      </div>
-      <div class="panel-body">
-        <div class="convo" id="pConvo"></div>
-        <div class="side" id="pSide"></div>
-      </div>
-    </aside>
   </div>
 
   <ol class="notes" data-for="queue">
@@ -571,28 +595,51 @@ function generic(p) {
   };
 }
 
-const panel = document.getElementById('panel'), scrim = document.getElementById('scrim');
+const panel = document.getElementById('panel'), ptLayout = document.getElementById('ptLayout');
+const PROFILE = {
+  maya: ['38', '(555) 014-2231', 'Texts, weekdays 9–6', 'Mornings', '28 Sep · exam & cleaning'],
+  daniel: ['52', '(555) 014-7720', 'Texts, weekdays 9–6', 'Afternoons', '21 Sep · exam'],
+  elena: ['45', '(555) 014-3308', 'Texts, weekdays 9–6', 'Any time', '24 Sep · exam'],
+  james: ['61', '(555) 014-9013', 'Texts, weekdays 9–6', 'Mornings', '14 Sep · exam'],
+  aisha: ['29', '(555) 014-5562', 'Texts, after 3 PM', 'Afternoons', '16 Sep · exam'],
+  nora: ['34', '(555) 014-8812', 'Texts, weekdays 9–6', 'Any time', '29 Sep · cleaning'],
+  leo: ['57', '(555) 014-2290', 'Texts, weekdays 9–6', 'Mornings', '30 Sep · consult'],
+  robert: ['67', '(555) 014-1187', 'Texts, weekdays 9–6', 'Any time', '18 Sep · exam'],
+  sam: ['41', '(555) 014-6604', 'Texts, weekdays 9–6', 'Mornings', '22 Sep · exam'],
+  hana: ['33', '(555) 014-7351', 'Texts, weekdays 9–6', 'Mornings', '25 Sep · cleaning'],
+};
+let openId = null;
 function openPanel(id) {
   const p = patients[id];
   const c = convos[id] || generic(p);
+  const [age, phone, contact, times, last] = PROFILE[id];
+  openId = id;
   document.getElementById('pName').textContent = p.name;
-  document.getElementById('pChart').innerHTML = `${p.tx} · ${p.dr}`;
+  document.getElementById('pChart').textContent = `${p.tx} · ${p.dr} · recommended ${p.date}`;
+  document.getElementById('pInfo').innerHTML =
+    `<dt>Age</dt><dd>${age}</dd><dt>Phone</dt><dd>${phone}</dd><dt>Contact</dt><dd>${contact}</dd><dt>Prefers</dt><dd>${times}</dd><dt>Last visit</dt><dd>${last}</dd>`;
+  document.getElementById('pNext').innerHTML =
+    `<div class="k">Next</div><div class="nextcard">${c.next}<div class="acts"><button class="btn">Pause</button><button class="btn">Stop</button></div></div>`;
   document.getElementById('pConvo').innerHTML =
     `<div class="legend"><span><i style="background:var(--chart-wash);box-shadow:inset 0 -1.5px 0 #9CC7AA"></i>From the chart</span><span><i style="background:var(--faq-wash);box-shadow:inset 0 -1.5px 0 #A3BCE0"></i>From an FAQ</span></div>` +
     c.msgs.map(([who, t, html]) => `<div class="m ${who === 'pt' ? 'pt' : ''}"><div class="meta">${who === 'pt' ? p.name.split(' ')[0] : 'Harbor Dental'} · ${t}</div><div class="b">${html}</div></div>`).join('');
   document.getElementById('pSide').innerHTML =
-    `<div><div class="k">Next</div><div class="nextcard">${c.next}<div class="acts"><button class="btn">Pause</button><button class="btn">Stop</button></div></div></div>` +
-    `<div><div class="k">Used in replies</div>
+    `<div class="k">Used in replies</div>
       <div class="card chart"><div class="t">${c.chart.title}</div><p>${c.chart.text}</p><div class="foot">${c.chart.foot}</div></div>
-      ${c.faq ? `<div class="card faq" style="margin-top:10px"><div class="t">${c.faq.title}</div><p>${c.faq.text}</p><div class="foot">${c.faq.foot}</div></div>` : ''}
-    </div>`;
-  panel.hidden = scrim.hidden = false;
+      ${c.faq ? `<div class="card faq" style="margin-top:10px"><div class="t">${c.faq.title}</div><p>${c.faq.text}</p><div class="foot">${c.faq.foot}</div></div>` : ''}`;
+  panel.hidden = false;
+  ptLayout.classList.add('has-panel');
+  document.querySelectorAll('.q').forEach((r) => r.classList.toggle('sel', r.dataset.p === id));
 }
-function closePanel() { panel.hidden = scrim.hidden = true; }
-[qrows, brows].forEach((el) => el.addEventListener('click', (e) => { const b = e.target.closest('.q'); if (b) openPanel(b.dataset.p); }));
-scrim.addEventListener('click', closePanel);
+function closePanel() {
+  panel.hidden = true;
+  openId = null;
+  ptLayout.classList.remove('has-panel');
+  document.querySelectorAll('.q.sel').forEach((r) => r.classList.remove('sel'));
+}
+[qrows, brows].forEach((el) => el.addEventListener('click', (e) => { const b = e.target.closest('.q'); if (b) (openId === b.dataset.p ? closePanel() : openPanel(b.dataset.p)); }));
 document.getElementById('pClose').addEventListener('click', closePanel);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && apptBook.hidden) closePanel(); });
 // Hovering a tinted sentence lights up its source card, and vice versa.
 panel.addEventListener('mouseover', (e) => {
   const k = e.target.closest('[data-k]')?.dataset.k || (e.target.closest('.card.chart') ? 'chart' : e.target.closest('.card.faq') ? 'faq' : null);
