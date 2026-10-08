@@ -445,9 +445,10 @@ body:has(.mobile-patient-dialog[open]){overflow:hidden}
 }
 /* Desktop: the open patient stays marked, since their details sit beside the list. */
 .register-layout .status-group .group-row:hover{background:#f8faf8}
-.register-layout .status-group .group-row.selected{background:#f1f6f2;box-shadow:inset 3px 0 #6b9277}
+.register-layout .status-group .group-row.selected{position:relative;background:#f1f6f2;box-shadow:none}
+.register-layout .status-group .group-row.selected::before{content:'';position:absolute;left:5px;top:12px;bottom:12px;width:3px;border-radius:3px;background:#6b9277}
 /* Phones: details open in a sheet, so no lingering selection; slightly larger type for touch reading. */
-@media(max-width:900px){.register-layout .status-group .group-row.selected{background:#fff;box-shadow:none}}
+@media(max-width:900px){.register-layout .status-group .group-row.selected{background:#fff}.register-layout .status-group .group-row.selected::before{display:none}}
 @media(min-width:651px){
  .register-layout .status-group .row-person strong{font-size:13px}
  .register-layout .status-group .row-person small{font-size:11px}
