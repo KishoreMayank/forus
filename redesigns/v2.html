@@ -780,7 +780,7 @@ const PROFILE = {
   james: ['61', '(555) 014-9013', 'Texts, weekdays 9–6', 'Mornings', '14 Sep · exam'],
   aisha: ['29', '(555) 014-5562', 'Texts, after 3 PM', 'Afternoons', '16 Sep · exam'],
   nora: ['34', '(555) 014-8812', 'Texts, weekdays 9–6', 'Any time', '29 Sep · cleaning'],
-  leo: ['57', 'leo.brandt@example.com', 'Email', 'Mornings', '30 Sep · consult'],
+  leo: ['57', 'leo.brandt@example.com', 'Email, weekdays 9–6', 'Mornings', '30 Sep · consult'],
   robert: ['67', '(555) 014-1187', 'Texts, weekdays 9–6', 'Any time', '18 Sep · exam'],
   sam: ['41', '(555) 014-6604', 'Texts, weekdays 9–6', 'Mornings', '22 Sep · exam'],
   hana: ['33', '(555) 014-7351', 'Texts, weekdays 9–6', 'Mornings', '25 Sep · cleaning'],
@@ -798,7 +798,7 @@ function openPanel(id) {
   const row = Object.values(ROWS).flat().find((r) => r[0] === id);
   const [, rStatus, rFlag, rHeard, rWhen, rWhat] = row;
   document.getElementById('pInfo').innerHTML =
-    `<dt>Status</dt><dd>${rStatus}${rFlag ? `<span class="flag">${rFlag}</span>` : ''}</dd><dt>Last heard</dt><dd>${rHeard}</dd><dt>Next</dt><dd><b>${rWhen}</b> · ${rWhat}</dd><dt class="dsep"></dt><dd class="dsep"></dd><dt>Age</dt><dd>${age}</dd><dt>Phone</dt><dd>${phone}</dd><dt>Contact</dt><dd>${contact}</dd><dt>Prefers</dt><dd>${times}</dd><dt>Last visit</dt><dd>${last}</dd><dt>Recommended</dt><dd>${p.tx} · ${p.dr} · ${p.date}</dd>`;
+    `<dt>Status</dt><dd>${rStatus}${rFlag ? `<span class="flag">${rFlag}</span>` : ''}</dd><dt>Last heard</dt><dd>${rHeard}</dd><dt>Next</dt><dd><b>${rWhen}</b> · ${rWhat}</dd><dt class="dsep"></dt><dd class="dsep"></dd><dt>Age</dt><dd>${age}</dd><dt>${phone.includes('@') ? 'Email' : 'Phone'}</dt><dd>${phone}</dd><dt>Contact</dt><dd>${contact}</dd><dt>Prefers</dt><dd>${times}</dd><dt>Last visit</dt><dd>${last}</dd><dt>Recommended</dt><dd>${p.tx} · ${p.dr} · ${p.date}</dd>`;
   document.getElementById('pRec').innerHTML =
     `<div class="k">From the chart</div><div class="card chart"><div class="t">${c.chart.title}</div><p>${c.chart.text}</p><div class="foot">${c.chart.foot}</div></div>`;
   // Split "Mon 9:36" into a day (shown once, as a separator) and a time (shown under the bubble).
@@ -813,7 +813,7 @@ function openPanel(id) {
     return `${sep}<div class="bub ${who === 'pt' ? 'in' : 'out'} ${nextSame ? 'grouped' : ''}"><div class="bb">${html}</div>${nextSame || !time ? '' : `<div class="bt">${time}</div>`}</div>`;
   }).join('');
   const draft = !c.draft ? `<div class="hold">${c.hold}<div class="draft-acts"><button class="link">Mark as called</button><button class="link">Reply myself</button></div></div>` : `<div class="bub out draft"><div class="draft-cap">Scheduled · ${c.draft.when} · ${c.draft.cond}</div><div class="bb">${c.draft.text}</div><div class="draft-acts"><button class="link">Edit</button><button class="link">Send now</button><button class="link">Pause</button></div></div>`;
-  const channel = contact === 'Email' ? `Email · ${phone}` : `Text · ${phone}`;
+  const channel = phone.includes('@') ? `Email · ${phone}` : `Text · ${phone}`;
   document.getElementById('pChannel').textContent = channel;
   document.getElementById('pConvo').innerHTML =
     (msgs || `<div class="day-sep">Found in ${first}’s chart this morning</div>`) + draft;
