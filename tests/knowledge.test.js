@@ -63,6 +63,7 @@ test('treatment explanations and visit answers use the right patient and library
  assert.match(last(c).text,new RegExp(`${c.duration} minutes`));
  assert.equal(last(c).sources.find(s=>s.kind==='knowledge').id,'kb-filling-visit');
  assert.deepEqual(last(c).sources.map(s=>s.kind),['chart','knowledge']);
+ const preview=composeAnswer(c,'faq',entries,'kb-filling-visit');assert.equal(preview.text,last(c).text);assert.deepEqual(preview.sources,last(c).sources);
 });
 
 test('practice guidance cannot fill a missing clinical rationale',()=>{

@@ -1,5 +1,5 @@
 import {loadKnowledge,key as knowledgeKey} from './knowledge-store.js?v=1';
-import {relevantKnowledge} from './knowledge-response.js?v=1';
+import {relevantKnowledge} from './knowledge-response.js?v=2';
 import {scheduledMessage,updateScheduledMessage} from './scheduled-message.js?v=3';
 import {setupSourceData} from './source-data.js?v=12';
 import {setupCalendar} from './calendar.js?v=7';

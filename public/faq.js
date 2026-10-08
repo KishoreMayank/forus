@@ -2,7 +2,7 @@ import {seed} from './engine.js?v=13';
 import {extendPatients} from './demo-patients.js?v=17';
 import {treatmentDescriptions} from './treatment-knowledge.js?v=3';
 import {key,DELETED_KEY,BUILT_IN_TOPICS,loadKnowledge} from './knowledge-store.js?v=1';
-import {composeAnswer,treatmentTopic} from './knowledge-response.js?v=1';
+import {composeAnswer,treatmentTopic} from './knowledge-response.js?v=2';
 const host=document.querySelector('.faq-list');
 const editor=document.querySelector('#faq-editor'),form=editor.querySelector('form'),error=editor.querySelector('[role="alert"]');
 let {entries,topics,deletedIds}=loadKnowledge();

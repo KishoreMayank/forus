@@ -1,5 +1,5 @@
 import {loadKnowledge} from './knowledge-store.js?v=1';
-import {composeAnswer} from './knowledge-response.js?v=1';
+import {composeAnswer} from './knowledge-response.js?v=2';
 export const VERSION = 1;
 export const DAY = 86400000;
 export const START = Date.UTC(2026,9,12,9);

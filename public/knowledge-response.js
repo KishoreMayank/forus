@@ -32,7 +32,7 @@ export function composeAnswer(c,intent,entries,entryId){
   sources.push(chartSource(c));
   parts.push(missingRationale(c)?'Your chart does not include the patient-specific reason for this recommendation. I won’t guess why it was recommended.':`Your clinician’s note says: “${patientReason(c)}”`);
  }
- if(intent==='visit'){
+ if(intent==='visit'||(entry&&[...Object.values(visitIds),'faq-2','faq-4','scheduling-duration'].includes(entry.id))){
   sources.push(planSource(c));
   parts.push(`Your current plan reserves ${c.duration||60} minutes with ${c.provider||'Dr. Lee'} for ${String(c.treatment||'the recommended treatment').toLowerCase()}.`);
  }
