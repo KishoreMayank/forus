@@ -15,14 +15,13 @@ export interface Ui {
   tab: 'patient' | 'conversation';
   filter: Filter;
   faqFile: string;
-  integration: string | null;
   calendarOpen: boolean;
   showSources: boolean;
 }
 
 const defaultUi: Ui = {
   view: 'patients', selectedId: null, tab: 'patient', filter: 'all', faqFile: 'crowns',
-  integration: null, calendarOpen: false, showSources: false,
+  calendarOpen: false, showSources: false,
 };
 
 interface Persisted { state: State; ui: Ui }

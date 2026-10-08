@@ -59,15 +59,6 @@ export function statusOf(s: State, c: Case): { text: string; tag?: string; dot: 
   return { text: 'Asking questions', dot: 'live' };
 }
 
-export function lastHeard(s: State, c: Case): string {
-  const msgs = s.messages.filter((m) => m.caseId === c.id);
-  const lastPt = [...msgs].reverse().find((m) => m.from === 'patient');
-  if (lastPt) return `Replied ${rel(lastPt.at, s.now)}`;
-  if (!msgs.length) return '—';
-  const days = Math.floor((s.now - msgs[0].at) / DAY);
-  return days >= 1 ? `No reply · ${days} day${days === 1 ? '' : 's'}` : 'No reply yet';
-}
-
 export function nextStep(s: State, c: Case): { when: string; what: string } | null {
   if (c.hold) return { when: 'Now', what: 'front desk to call' };
   if (c.status === 'consult_booked') {

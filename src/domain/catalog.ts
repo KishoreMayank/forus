@@ -101,5 +101,3 @@ export const FAQ_FILES: FaqFile[] = [
     entries: [{ key: 'cost', q: 'How much will it cost?', route: 'front_desk' }],
   },
 ];
-
-export const faqEntry = (fileId: string, key: string) => FAQ_FILES.find((f) => f.id === fileId)?.entries.find((e) => e.key === key);

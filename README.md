@@ -11,8 +11,6 @@ npm test        # engine rules
 npm run build
 ```
 
-The static design reference is `redesigns/v2.html`, open at `/redesigns/v2.html` on the dev server.
-
 ## The product
 
 **Patients**

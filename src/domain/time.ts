@@ -51,37 +51,12 @@ export function nextWeek(t: number): number {
 
 const dateFmt = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 const timeFmt = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
-const shortFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-const longFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-export const fmtDate = (t: number) => dateFmt.format(t);
 export const fmtTime = (t: number) => timeFmt.format(t);
-export const fmtShort = (t: number) => shortFmt.format(t);
-export const fmtLong = (t: number) => longFmt.format(t);
 export const fmtDateTime = (t: number) => `${dateFmt.format(t)}, ${timeFmt.format(t)}`;
-
-/** Relative label vs. the simulated clock: "Today, 9:00 AM", "Tomorrow", "Wed, Oct 14". */
-export function fmtRelative(t: number, now: number): string {
-  const diff = Math.round((startOfDay(t) - startOfDay(now)) / DAY);
-  if (diff === 0) return `Today, ${fmtTime(t)}`;
-  if (diff === 1) return `Tomorrow, ${fmtTime(t)}`;
-  if (diff === -1) return `Yesterday, ${fmtTime(t)}`;
-  return fmtDateTime(t);
-}
-
-export function fmtDayRelative(t: number, now: number): string {
-  const diff = Math.round((startOfDay(t) - startOfDay(now)) / DAY);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Tomorrow';
-  if (diff === -1) return 'Yesterday';
-  if (diff < 0 && diff > -7) return `${-diff} days ago`;
-  return fmtDate(t);
-}
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /** "28 Sep" */
 export const fmtDM = (t: number) => { const d = new Date(t); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; };
 /** "Thu 15 Oct" */
 export const fmtWDM = (t: number) => { const d = new Date(t); return `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
-/** "9:00" / "1:30" — 12-hour clock without AM/PM, as people write it in texts. */
-export const fmtHM = (t: number) => { const d = new Date(t); const h = d.getHours() % 12 || 12; return `${h}:${String(d.getMinutes()).padStart(2, '0')}`; };
