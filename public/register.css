@@ -528,3 +528,19 @@ dialog p.pay-fine{font-size:10px;margin:4px 0 18px}
 @keyframes thinking-pulse{0%,70%,100%{opacity:.35;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}
 @media(prefers-reduced-motion:reduce){.thinking-dots i{animation:none;opacity:.7}}
 .control[data-primary=true]:hover:not(:disabled){background:#30573f;border-color:#30573f;color:#fff}
+
+/* Patient info, compact: contact as a 2×2 grid; billing as one summary line. */
+.register-layout .contact-panel{padding-top:18px;padding-bottom:18px}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;margin:0}
+.contact-grid>div{min-width:0}
+.contact-grid dt{font-size:10px;color:#8a998e;margin-bottom:3px}
+.contact-grid dd{margin:0;font-size:12px;color:#33463b;line-height:1.45}
+.billing-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.billing-head>span{font-size:11px;color:#5d7363}
+.register-layout .billing-panel h3{margin:0}
+.billing-sum{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 14px;margin-top:10px}
+.billing-sum p{margin:0;font-size:12px;color:#5d7363}
+.billing-sum strong{font-size:16px;font-weight:600;color:#2f4637;margin-right:3px}
+.billing-sum>span{font-size:11px;color:#8a998e}
+.billing-panel .pay-button{margin-top:12px;min-height:36px}
+.billing-panel .billing-paid,.billing-panel .billing-note{margin-top:10px}
