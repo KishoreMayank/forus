@@ -452,7 +452,7 @@
   <ol class="notes" data-for="queue">
     <li><span class="mk">1</span><span><b>Connections in one line.</b> <span class="t">&ldquo;Synced 9:04 AM&rdquo; is all staff need. Clicking it lists the four sources and what each is used for. A failed sync would turn this amber.</span></span></li>
     <li><span class="mk">2</span><span><b>Where the list comes from, in one line.</b> <span class="t">Every patient here has treatment in their chart and nothing booked. There are only two states: in progress or booked. No progress bar, because nobody knows in advance how many steps a patient will take.</span></span></li>
-    <li><span class="mk">3</span><span><b>In progress comes first, three facts per row.</b> <span class="t">Who and what treatment, with which dentist; what&rsquo;s going on now; and what happens next. The dot only changes when a person is involved (amber) or the patient asked to pause (hollow).</span></span></li>
+    <li><span class="mk">3</span><span><b>In progress comes first, three facts per row.</b> <span class="t">Who, which dentist (the treatment is one click away); what&rsquo;s going on now; and what happens next. The dot only changes when a person is involved (amber) or the patient asked to pause (hollow).</span></span></li>
     <li><span class="mk">4</span><span><b>Booked sits below, quieter.</b> <span class="t">Same row shape, greyed names. Once someone is booked the only remaining step is a reminder. The appointment book opens from here when you need it.</span></span></li>
   </ol>
   <ol class="notes" data-for="knowledge" hidden>
@@ -493,7 +493,7 @@ const rowHtml = (id) => {
   const p = patients[id];
   return `<button class="q" data-p="${id}">
     <span class="name">${p.name}</span>
-    <span class="tx"><b>${p.tx}</b> · ${p.dr}</span>
+    <span class="tx">${p.dr}</span>
     <span class="track"><span class="sdot ${p.stage === 3 ? 'booked' : p.tone || ''}"></span>${p.stageText}</span>
     <span class="nx ${p.tone === 'amber' ? 'amber' : ''}"><b>${p.next}</b> · ${p.nextText}</span>
   </button>`;
