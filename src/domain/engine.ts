@@ -1,9 +1,10 @@
 import type {
-  Appointment, Case, CaseEvent, CaseStatus, Message, MessageSection, ReplyOption, Slot, State, Wake, WakeType,
+  Appointment, Case, CaseEvent, CaseStatus, FaqEntry, Message, Part, ReplyOption, Slot, State, Wake, WakeType,
 } from './types';
+import { TREATMENTS } from './catalog';
 import { CONSULT_NOTES, PRACTICE } from './seed';
 import { dayKey, findSlots, getSlot, isBookable } from './slots';
-import { DAY, HOUR, MIN, addDays, fmtDate, fmtDateTime, fmtTime, nextContactTime, nextWeek, withTime } from './time';
+import { DAY, HOUR, MIN, addDays, fmtDM, fmtDateTime, fmtTime, fmtWDM, nextContactTime, nextWeek, withTime } from './time';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The coordinator loop
@@ -28,10 +29,22 @@ const canContact = (c: Case) => c.status !== 'opted_out';
 export type Action =
   | { type: 'reply'; caseId: string; optionId: string }
   | { type: 'advance'; ms: number }
+  | { type: 'advanceTo'; at: number }
   | { type: 'jumpNext'; caseId?: string }
   | { type: 'practiceCancel'; caseId: string }
   | { type: 'recordCompletion'; caseId: string }
+  | { type: 'sendNow'; caseId: string; key: string }
+  | { type: 'staffPause'; caseId: string }
+  | { type: 'resolveHold'; caseId: string }
+  | { type: 'sync' }
   | { type: 'replayLast' };
+
+// ── message parts ────────────────────────────────────────────────────────────
+
+const T = (t: string): Part => ({ t });
+const C = (t: string, ref: string): Part => ({ t, src: 'chart', ref });
+const F = (t: string, ref: string): Part => ({ t, src: 'faq', ref });
+export const textOf = (parts: Part[]) => parts.map((p) => p.t).join('');
 
 // ── small helpers ────────────────────────────────────────────────────────────
 
@@ -40,31 +53,32 @@ const ctx = (s: State, c: Case) => {
   const rec = s.recommendations[c.recommendationId];
   const provider = s.providers[c.providerId];
   const note = s.notes[rec.noteId];
-  return { patient, rec, provider, note };
+  const tx = TREATMENTS[rec.treatment];
+  return { patient, rec, provider, note, tx, first: patient.firstName };
 };
+
+export function faq(s: State, fileId: string, key: string): FaqEntry | undefined {
+  return s.faqs[fileId]?.entries.find((e) => e.key === key);
+}
 
 function nextId(s: State, prefix: string) {
   s.seq += 1;
   return `${prefix}-${s.seq}`;
 }
 
-function event(
-  s: State, c: Case, actor: CaseEvent['actor'], kind: CaseEvent['kind'], title: string, why: string,
-  refs?: CaseEvent['refs'],
-) {
+function event(s: State, c: Case, actor: CaseEvent['actor'], kind: CaseEvent['kind'], title: string, why: string, refs?: CaseEvent['refs']) {
   s.events.push({ id: nextId(s, 'e'), caseId: c.id, at: s.now, actor, kind, title, why, refs });
 }
 
-/** Send a coordinator message exactly once per key. Returns false if the key was already used. */
-function send(s: State, c: Case, key: string, text: string, extra: Partial<Message> = {}): boolean {
-  if (s.processedKeys[key]) return false;
-  if (!canContact(c)) return false;
+/** Send a coordinator message exactly once per key. */
+function send(s: State, c: Case, key: string, parts: Part[], tag?: string): boolean {
+  if (s.processedKeys[key] || !canContact(c)) return false;
   s.processedKeys[key] = s.now;
-  s.messages.push({ id: nextId(s, 'm'), key, caseId: c.id, from: 'coordinator', at: s.now, text, ...extra });
-  if (extra.tag) c.lastAction = { label: extra.tag, at: s.now };
-  if (extra.sources) {
-    for (const k of extra.sources.kbIds) if (!c.kbRefs.includes(k)) c.kbRefs.push(k);
-    for (const n of extra.sources.noteIds) if (!c.noteRefs.includes(n)) c.noteRefs.push(n);
+  const channel = s.patients[c.patientId].channel;
+  s.messages.push({ id: nextId(s, 'm'), key, caseId: c.id, from: 'coordinator', channel, at: s.now, parts, tag });
+  for (const p of parts) {
+    if (p.src === 'faq' && p.ref && !c.faqRefs.includes(p.ref)) c.faqRefs.push(p.ref);
+    if (p.src === 'chart' && p.ref && !c.noteRefs.includes(p.ref)) c.noteRefs.push(p.ref);
   }
   return true;
 }
@@ -73,21 +87,22 @@ function schedule(s: State, c: Case, type: WakeType, atTime: number, label: stri
   c.next = { type, at: atTime, key: `wake:${type}:${c.id}:${nextId(s, 'w')}`, label };
 }
 
-/** Cancel a pending wake-up, logging why it was suppressed (pause, booking, completion…). */
+/** Cancel a pending wake-up, logging why it was suppressed. */
 function suppressPending(s: State, c: Case, reason: string, onlyTypes?: WakeType[]) {
   const n = c.next;
-  if (!n) return;
-  if (onlyTypes && !onlyTypes.includes(n.type)) return;
+  if (!n || (onlyTypes && !onlyTypes.includes(n.type))) return;
   c.next = undefined;
-  if (n.type === 'outreach' || n.type === 'followup' || n.type === 'close_no_response' || n.type === 'resume') {
-    const what = n.type === 'resume' ? 'Check-back' : n.type === 'outreach' ? 'First outreach' : 'Follow-up';
-    event(s, c, 'coordinator', 'suppressed', `${what} planned for ${fmtDate(n.at)} cancelled`, reason);
+  if (['outreach', 'followup', 'resume'].includes(n.type)) {
+    const what = n.type === 'resume' ? 'Check-back' : n.type === 'outreach' ? 'First message' : 'Follow-up';
+    event(s, c, 'coordinator', 'suppressed', `${what} planned for ${fmtWDM(n.at)} cancelled`, reason);
   }
 }
 
 function scheduleFollowup(s: State, c: Case) {
+  if (c.hold) return; // a person is handling it; no automated nudges meanwhile
   const gap = FOLLOWUP_GAPS[Math.min(c.nudgesSent, FOLLOWUP_GAPS.length - 1)];
-  schedule(s, c, 'followup', nextContactTime(withTime(s.now + gap, 10)), `Send follow-up ${c.nudgesSent + 1} of ${MAX_FOLLOWUPS} if no reply`);
+  const n = c.nudgesSent + 1;
+  schedule(s, c, 'followup', nextContactTime(withTime(s.now + gap, 10)), n === MAX_FOLLOWUPS ? 'Last follow-up' : 'Follow-up');
 }
 
 function activeAppt(s: State, c: Case): Appointment | undefined {
@@ -100,9 +115,8 @@ function activeConsult(s: State, c: Case): Appointment | undefined {
   return a && a.status === 'booked' ? a : undefined;
 }
 
-function slotLines(slots: Slot[]) {
-  return slots.map((sl) => `• ${fmtDate(sl.start)} at ${fmtTime(sl.start)}`).join('\n');
-}
+const slotLines = (slots: Slot[]) => slots.map((sl) => `• ${fmtWDM(sl.start)}, ${fmtTime(sl.start)}`).join('\n');
+const dur = (min: number) => (min >= 120 ? `${min / 60} hours` : `${min} minutes`);
 
 function offer(s: State, c: Case, type: Slot['type'], mode: 'preferred' | 'more'): Slot[] {
   const { patient } = ctx(s, c);
@@ -124,26 +138,38 @@ function cancelAppointment(s: State, a: Appointment, reason: string) {
   delete s.bookedSlots[a.slotId];
 }
 
+/** Questions a patient can ask, from the treatment's FAQ file (other than "why", which also uses the chart). */
+function treatmentQuestions(s: State, c: Case): FaqEntry[] {
+  const { tx } = ctx(s, c);
+  return (s.faqs[tx.faq]?.entries ?? []).filter((e) => e.key !== 'why');
+}
+
 // ── reply options: generated from the case state, never from a fixed script ─
 
-const MORE_OPTIONS: Record<string, ReplyOption> = {
+const MORE: Record<string, ReplyOption> = {
   pause_week: { id: 'pause_week', label: 'Check back next week', group: 'more' },
   pause_month: { id: 'pause_month', label: 'Check back in a month', group: 'more' },
   decline: { id: 'decline', label: 'I’ve decided not to go ahead', group: 'more' },
-  stop: { id: 'stop', label: 'Stop messages', group: 'more', hint: 'Same as replying STOP' },
+  stop: { id: 'stop', label: 'Stop messages', group: 'more' },
 };
 
 export function replyOptions(s: State, caseId: string): ReplyOption[] {
   const c = s.cases[caseId];
   if (!c) return [];
   const p = (id: string, label: string): ReplyOption => ({ id, label, group: 'primary' });
-  const more = (...ids: string[]) => ids.map((id) => MORE_OPTIONS[id]);
+  const more = (...ids: string[]) => ids.map((id) => MORE[id]);
   const askable = (id: string, label: string) => (c.asked.includes(id) ? [] : [p(id, label)]);
   const slotOpts = (prefix: string) =>
     c.offeredSlotIds
       .map(getSlot)
       .filter((sl): sl is Slot => !!sl && isBookable(s, sl))
-      .map<ReplyOption>((sl) => ({ id: `${prefix}${sl.id}`, label: `${fmtDate(sl.start)} · ${fmtTime(sl.start)}`, group: 'slot' }));
+      .map<ReplyOption>((sl) => ({ id: `${prefix}${sl.id}`, label: `${fmtWDM(sl.start)}, ${fmtTime(sl.start)}`, group: 'slot' }));
+  const questions = () => [
+    ...treatmentQuestions(s, c).flatMap((e) => askable(`q:${e.key}`, e.q)),
+    ...askable('visit', 'What happens at the appointment?'),
+    ...askable('cost', 'How much will it cost?'),
+  ];
+  const { tx } = ctx(s, c);
 
   switch (c.status) {
     case 'opted_out':
@@ -154,93 +180,50 @@ export function replyOptions(s: State, caseId: string): ReplyOption[] {
       return more('stop');
     case 'declined':
       return [p('reopen', 'Actually, I’d like to schedule'), ...more('stop')];
+    case 'no_response':
+      return [p('book', 'I’m ready to schedule'), ...askable('why', `Why do I need ${tx.a}?`), ...more('decline', 'stop')];
     case 'paused':
       return [p('ready', 'I’m ready to schedule now'), ...more('decline', 'stop')];
     case 'booked':
-      return [
-        ...askable('visit', 'What happens at the appointment?'),
-        p('reschedule', 'I need to reschedule'),
-        p('cancel_appt', 'Cancel my appointment'),
-        ...more('stop'),
-      ];
+      return [...askable('visit', 'What happens at the appointment?'), p('reschedule', 'I need to reschedule'), p('cancel_appt', 'Cancel my appointment'), ...more('stop')];
     case 'consult_booked':
-      return [p('reschedule_consult', 'I need to change the discussion time'), ...more('decline', 'stop')];
+      return [p('reschedule_consult', 'I need to change the call time'), ...more('decline', 'stop')];
   }
 
-  // awaiting_reply or no_response: depends on where the conversation is.
   switch (c.stage) {
     case 'offering': {
       const slots = slotOpts('slot:');
-      return [
-        ...slots,
-        ...(slots.length ? [p('more_times', 'Other times')] : [p('book', 'Show available times')]),
-        p('pause_week', 'Check back next week'),
-        ...more('pause_month', 'decline', 'stop'),
-      ];
+      return [...slots, ...(slots.length ? [p('more_times', 'Other times')] : [p('book', 'Show available times')]), p('pause_week', 'Check back next week'), ...questions(), ...more('pause_month', 'decline', 'stop')];
     }
     case 'consult_offering': {
       const slots = slotOpts('consult_slot:');
-      return [
-        ...slots,
-        ...(slots.length ? [p('more_consult_times', 'Other times')] : [p('consult_yes', 'Show discussion times')]),
-        ...more('pause_week', 'decline', 'stop'),
-      ];
+      return [...slots, ...(slots.length ? [p('more_consult_times', 'Other times')] : [p('consult_yes', 'Show call times')]), ...more('pause_week', 'decline', 'stop')];
     }
     case 'handoff_offer':
-      return [
-        p('consult_yes', 'Yes, set up a discussion'),
-        p('consult_later', 'Let me think about it'),
-        p('consult_no', 'No thanks'),
-        ...more('decline', 'stop'),
-      ];
+      return [p('consult_yes', 'Yes, set up a call'), p('consult_later', 'Let me think about it'), p('consult_no', 'No thanks'), ...more('decline', 'stop')];
     case 'post_consult':
-      return [
-        p('proceed', 'I’d like to schedule the crown'),
-        p('pause_week', 'I need more time'),
-        p('decline', 'I’ve decided not to go ahead'),
-        ...more('stop'),
-      ];
+      return [p('proceed', `I’d like to schedule the ${tx.label.toLowerCase()}`), p('pause_week', 'I need more time'), p('decline', 'I’ve decided not to go ahead'), ...more('stop')];
     case 'explained':
-      return [
-        p('book', 'Yes, let’s find a time'),
-        ...askable('visit', 'What happens at the appointment?'),
-        ...askable('alt', 'Could a filling work instead?'),
-        ...askable('wait', 'What if I wait a few months?'),
-        ...more('pause_week', 'pause_month', 'decline', 'stop'),
-      ];
+      return [p('book', 'Yes, let’s find a time'), ...questions(), ...more('pause_week', 'pause_month', 'decline', 'stop')];
     default:
-      return [
-        ...askable('why', 'Why do I need a crown?'),
-        p('book', 'I’m ready to schedule'),
-        ...askable('visit', 'What happens at the appointment?'),
-        ...more('pause_week', 'pause_month', 'decline', 'stop'),
-      ];
+      return [...askable('why', `Why do I need ${tx.a}?`), p('book', 'I’m ready to schedule'), ...questions(), ...more('pause_week', 'pause_month', 'decline', 'stop')];
   }
 }
 
-const PATIENT_TEXT: Record<string, string> = {
-  why: 'Why do I need a crown?',
-  book: 'Yes, let’s find a time',
-  ready: 'I’m ready to schedule now',
-  proceed: 'I’d like to schedule the crown',
-  reopen: 'Actually, I’d like to schedule',
-  visit: 'What happens at the appointment?',
-  alt: 'Could a filling work instead?',
-  wait: 'What happens if I wait a few months?',
-  more_times: 'Do you have other times?',
-  more_consult_times: 'Do you have other times?',
-  pause_week: 'Can you check back next week?',
-  pause_month: 'Can you check back in a month?',
-  consult_later: 'Let me think about it',
-  consult_yes: 'Yes, please set up a discussion',
-  consult_no: 'No thanks',
-  decline: 'I’ve decided not to go ahead',
-  stop: 'STOP',
-  start: 'START',
-  reschedule: 'I need to reschedule',
-  cancel_appt: 'Please cancel my appointment',
-  reschedule_consult: 'I need to change the discussion time',
-};
+function patientText(s: State, c: Case, optionId: string, label: string): string {
+  const fixed: Record<string, string> = {
+    book: 'Yes, let’s find a time', ready: 'I’m ready to schedule now', more_times: 'Do you have other times?',
+    more_consult_times: 'Do you have other times?', pause_week: 'Can you check back next week?', pause_month: 'Can you check back in a month?',
+    consult_later: 'Let me think about it', consult_yes: 'Yes please, set up a call', consult_no: 'No thanks',
+    stop: 'STOP', start: 'START', cancel_appt: 'Please cancel my appointment',
+  };
+  if (optionId.startsWith('slot:') || optionId.startsWith('consult_slot:')) {
+    const sl = getSlot(optionId.split(':')[1])!;
+    return `${fmtWDM(sl.start)} at ${fmtTime(sl.start)} works`;
+  }
+  void s; void c;
+  return fixed[optionId] ?? label;
+}
 
 // ── patient replies ──────────────────────────────────────────────────────────
 
@@ -248,208 +231,190 @@ function handleReply(s: State, caseId: string, optionId: string) {
   const c = s.cases[caseId];
   if (!c) return;
   const opt = replyOptions(s, caseId).find((o) => o.id === optionId);
-  if (!opt) return; // stale or duplicate tap: ignore, nothing is created
+  if (!opt) return; // stale or duplicate tap: nothing is created
 
-  const { patient, rec, provider, note } = ctx(s, c);
+  const { patient, rec, provider, note, tx, first } = ctx(s, c);
   const replyId = nextId(s, 'r');
   const k = (n: string) => `msg:${c.id}:${replyId}:${n}`;
-  s.now += MIN; // the patient replies a moment later on the simulated clock
+  s.now += MIN;
 
-  let patientText = PATIENT_TEXT[optionId] ?? opt.label;
-  if (optionId.startsWith('slot:') || optionId.startsWith('consult_slot:')) {
-    const sl = getSlot(optionId.split(':')[1])!;
-    patientText = `${fmtDate(sl.start)} at ${fmtTime(sl.start)} works`;
-  }
-  s.messages.push({ id: nextId(s, 'm'), key: `reply:${c.id}:${replyId}`, caseId: c.id, from: 'patient', at: s.now, text: patientText });
-  event(s, c, 'patient', 'reply', `Patient replied: “${patientText}”`, 'Reply received. Pending follow-ups are replaced by the next step.');
+  const said = patientText(s, c, optionId, opt.label);
+  s.messages.push({ id: nextId(s, 'm'), key: `reply:${c.id}:${replyId}`, caseId: c.id, from: 'patient', channel: patient.channel, at: s.now, parts: [T(said)] });
+  event(s, c, 'patient', 'reply', `Replied: “${said}”`, 'Reply received. Any pending follow-up is replaced by the next step.');
   c.nudgesSent = 0;
 
   if (c.status === 'no_response' || c.status === 'declined') {
-    event(s, c, 'coordinator', 'resume', 'Case reopened by patient reply', 'A reply from the patient always reopens coordination.');
+    event(s, c, 'coordinator', 'resume', 'Case reopened by patient reply', 'A reply from the patient always reopens follow-up.');
     c.status = 'awaiting_reply';
     c.closedReason = undefined;
   }
 
   s.now += MIN;
+  const noteRef = note.id;
+
   const offerTimes = (mode: 'preferred' | 'more', intro: string) => {
-    const slots = offer(s, c, 'crown_prep', mode);
+    const slots = offer(s, c, 'treatment', mode);
     suppressPending(s, c, 'Patient is choosing a time now.', ['followup', 'resume', 'close_no_response']);
-    send(s, c, k('offer'), `${intro}\n\n${slotLines(slots)}\n\nTap a time to book it, or ask for other options.`, {
-      tag: 'Appointment times offered', slotIds: slots.map((x) => x.id), sources: { kbIds: ['kb-sched'], noteIds: [] },
-    });
-    event(s, c, 'coordinator', 'schedule', `Offered ${slots.length} appointment times`,
-      `Checked live availability for ${provider.short}: 90-minute crown block, at least 24h out, ${mode === 'preferred' && patient.timePreference !== 'any' ? `${patient.timePreferenceLabel.toLowerCase()} preferred` : 'any time of day'}.`,
-      { kbIds: ['kb-sched'] });
+    send(s, c, k('offer'), [T(`${intro} `), F(`Plan for about ${dur(tx.minutes)}`, 'scheduling#lengths'), T(`:\n${slotLines(slots)}`)], 'Times offered');
+    event(s, c, 'coordinator', 'schedule', `Offered ${slots.length} times with ${provider.short}`,
+      `Checked live availability: ${dur(tx.minutes)} with the treating dentist, at least 24 hours out, ${mode === 'preferred' && patient.timePreference !== 'any' ? `${patient.timePreferenceLabel.toLowerCase()} preferred` : 'any time of day'}.`,
+      { faq: ['scheduling#lengths'] });
     c.stage = 'offering';
     c.status = 'awaiting_reply';
     scheduleFollowup(s, c);
   };
 
-  const pause = (until: number, label: string) => {
-    suppressPending(s, c, `Patient asked us to check back on ${fmtDate(until)}. No messages before then.`);
+  const pause = (until: number, why: string) => {
+    suppressPending(s, c, `Patient asked us to check back on ${fmtWDM(until)}. No messages before then.`);
     c.status = 'paused';
     c.stage = 'paused';
     c.pausedUntil = until;
     c.offeredSlotIds = [];
     if (c.barrier === 'unknown') c.barrier = 'scheduling';
-    send(s, c, k('pause'), `Of course. I’ll check back on ${fmtDate(until)}, and you won’t hear from us about this before then. If you’re ready sooner, just reply here.`, { tag: 'Pause confirmed' });
-    event(s, c, 'coordinator', 'pause', `Paused until ${fmtDate(until)}`, `${label} Follow-up is suppressed until then; records are rechecked before resuming.`);
-    schedule(s, c, 'resume', until, 'Check back (patient request)');
+    send(s, c, k('pause'), [T(`Of course. I’ll check back on ${fmtWDM(until)}, and you won’t hear from us about this before then. If you’re ready sooner, just reply here.`)], 'Pause confirmed');
+    event(s, c, 'coordinator', 'pause', `Paused until ${fmtWDM(until)}`, `${why} Follow-up is suppressed until then; records are rechecked before resuming.`);
+    schedule(s, c, 'resume', until, 'Check back');
+  };
+
+  const restartTimer = () => {
+    suppressPending(s, c, 'Patient is engaged; follow-up timer restarted.', ['followup', 'close_no_response']);
+    scheduleFollowup(s, c);
+  };
+
+  const dentistHandoff = (entry: FaqEntry, ref: string) => {
+    send(s, c, k('handoff'), [
+      T(`That’s a good question for ${provider.short} directly. `),
+      C(`${provider.short}’s note explains why ${tx.a} was recommended`, noteRef),
+      T(', but it doesn’t cover this, and '),
+      F('I don’t want to guess about something this specific to you', ref),
+      T(`. I can set up a 20-minute call with ${provider.short} and share your question with the team beforehand. Would that help?`),
+    ], 'Dentist call offered');
+    event(s, c, 'coordinator', 'handoff', `Question not answered by the chart · call with ${provider.short} offered`,
+      `“${entry.q}” is a clinical question for this patient. The chart doesn’t cover it, so the coordinator doesn’t speculate.`, { noteIds: [noteRef], faq: [ref] });
+    c.stage = 'handoff_offer';
+    restartTimer();
   };
 
   switch (true) {
     case optionId === 'why': {
       c.asked.push('why');
       if (c.barrier === 'unknown') c.barrier = 'understanding';
-      const sections: MessageSection[] = [
-        { kind: 'clinician', label: `From ${provider.short}’s note · ${fmtDate(note.date)}`, text: note.patientSummary, refId: note.id },
-        { kind: 'general', label: 'General information · practice guide', text: s.kb['kb-crown'].patientText, refId: 'kb-crown' },
-      ];
-      send(s, c, k('why'), 'Would you like to see some appointment times, or do you have another question?', {
-        lead: 'Good question. Here\u2019s what your record says, plus some general background:',
-        sections, tag: 'Explanation', sources: { kbIds: ['kb-crown'], noteIds: [note.id] },
-      });
-      event(s, c, 'coordinator', 'explanation', 'Recommendation explained from the record',
-        `Patient asked why. Patient-specific reason taken only from ${provider.short}’s ${fmtDate(note.date)} note; general background from the practice guide. Barrier recorded as treatment understanding.`,
-        { kbIds: ['kb-crown'], noteIds: [note.id] });
+      const w = faq(s, tx.faq, 'why');
+      send(s, c, k('why'), [C(note.patientSummary, noteRef), T(' '), F(w?.a ?? '', `${tx.faq}#why`), T('\n\nWould you like to see some times?')], 'Explanation');
+      event(s, c, 'coordinator', 'explanation', 'Recommendation explained',
+        `Reason taken only from ${provider.short}’s ${fmtDM(note.date)} note; general background from ${s.faqs[tx.faq].file}.`, { noteIds: [noteRef], faq: [`${tx.faq}#why`] });
       c.stage = 'explained';
-      suppressPending(s, c, 'Patient is engaged; follow-up timer restarted.', ['followup', 'close_no_response']);
-      scheduleFollowup(s, c);
+      restartTimer();
+      break;
+    }
+    case optionId.startsWith('q:'): {
+      const key = optionId.slice(2);
+      c.asked.push(optionId);
+      if (c.barrier === 'unknown') c.barrier = 'understanding';
+      const entry = faq(s, tx.faq, key)!;
+      const ref = `${tx.faq}#${key}`;
+      if (entry.route === 'dentist' && !note.covers.includes(key)) {
+        dentistHandoff(entry, ref);
+      } else {
+        send(s, c, k(key), [F(entry.a ?? '', ref), T(c.status === 'booked' ? '' : ' Would you like to see some times?')], 'Question answered');
+        event(s, c, 'coordinator', 'explanation', `Answered “${entry.q}”`, `From ${s.faqs[tx.faq].file} (general information).`, { faq: [ref] });
+        if (c.stage === 'intro') c.stage = 'explained';
+        restartTimer();
+      }
       break;
     }
     case optionId === 'visit': {
       c.asked.push('visit');
-      const booked = c.status === 'booked';
-      send(s, c, k('visit'), booked ? 'Anything else, just reply here.' : 'Would you like to see some appointment times?', {
-        sections: [{ kind: 'general', label: 'General information · practice guide', text: s.kb['kb-visit'].patientText, refId: 'kb-visit' }],
-        tag: 'Visit information', sources: { kbIds: ['kb-visit'], noteIds: [] },
-      });
-      event(s, c, 'coordinator', 'explanation', 'Explained what the appointment involves', 'Answered from the practice guide (general information, not patient-specific).', { kbIds: ['kb-visit'] });
-      if (!booked) {
-        c.stage = 'explained';
-        suppressPending(s, c, 'Patient is engaged; follow-up timer restarted.', ['followup', 'close_no_response']);
-        scheduleFollowup(s, c);
+      const v = faq(s, 'the-appointment', 'visit');
+      send(s, c, k('visit'), [F(`Plan for about ${dur(tx.minutes)}`, 'scheduling#lengths'), T('. '), F(v?.a ?? '', 'the-appointment#visit'), T(c.status === 'booked' ? '' : ' Would you like to see some times?')], 'Question answered');
+      event(s, c, 'coordinator', 'explanation', 'Explained what the visit involves', 'From the-appointment.md and scheduling.md.', { faq: ['the-appointment#visit', 'scheduling#lengths'] });
+      if (c.status !== 'booked') {
+        if (c.stage === 'intro') c.stage = 'explained';
+        restartTimer();
       }
       break;
     }
-    case optionId === 'alt' || optionId === 'wait': {
-      c.asked.push(optionId);
-      if (c.barrier === 'unknown') c.barrier = 'understanding';
-      const covered = note.covers.includes(optionId);
-      const gap = optionId === 'alt'
-        ? `${provider.short}’s note explains why a crown was recommended, but it doesn’t discuss other options for your tooth.`
-        : `Your record doesn’t say how soon this needs to be done, and timing depends on details of your tooth I can’t see.`;
-      if (!covered) {
-        send(s, c, k('handoff'), `That’s a good question for ${provider.short} directly. I can set up a 20-minute discussion (in the office or by phone), and I’ll share your question with the dental team beforehand so they’re ready. Your crown won’t be scheduled unless you decide to go ahead. Would that help?`, {
-          sections: [{ kind: 'notice', label: 'Not in your record', text: `${gap} I don’t want to guess about something this specific to you.` }],
-          tag: 'Dentist discussion offered', sources: { kbIds: ['kb-sched'], noteIds: [note.id] },
-        });
-        event(s, c, 'coordinator', 'handoff', 'Question not answered by the record · dentist discussion offered',
-          `“${PATIENT_TEXT[optionId]}” is an individual clinical question. The clinician note does not cover it, so the coordinator does not speculate. Offered a discussion with ${provider.short} (no staff approval needed).`,
-          { noteIds: [note.id], kbIds: ['kb-sched'] });
-        c.stage = 'handoff_offer';
-        suppressPending(s, c, 'Patient is engaged; follow-up timer restarted.', ['followup', 'close_no_response']);
-        scheduleFollowup(s, c);
-      }
+    case optionId === 'cost': {
+      c.asked.push('cost');
+      suppressPending(s, c, 'A person is handling a cost question; automated follow-up waits.');
+      send(s, c, k('cost'), [T('Good question. '), F('I can’t see insurance details', 'costs#cost'), T(', so I’ve asked our front desk to call you with an exact amount. You won’t hear from me in the meantime.')], 'Handed to front desk');
+      c.hold = { to: 'front_desk', reason: 'Asked what it will cost', since: s.now };
+      const h = { id: nextId(s, 'h'), caseId: c.id, at: s.now, to: 'front_desk' as const, routedTo: 'Front desk', question: 'How much will it cost?', status: 'open' as const };
+      s.handoffs[h.id] = h;
+      c.handoffId = h.id;
+      event(s, c, 'coordinator', 'handoff', 'Handed to front desk', 'Cost questions need insurance details, which aren’t connected. No outreach until someone has called.', { faq: ['costs#cost'] });
       break;
     }
     case optionId === 'consult_yes' || optionId === 'more_consult_times': {
       const more = optionId === 'more_consult_times';
       if (!more && !c.handoffId) {
-        const question = c.asked.filter((a) => a === 'alt' || a === 'wait').map((a) => PATIENT_TEXT[a]).join(' / ') || 'Questions about the recommended crown';
-        const h = {
-          id: nextId(s, 'h'), caseId: c.id, at: s.now, routedTo: `${provider.short}’s team`, question, status: 'shared' as const,
-          context: [
-            `${rec.treatment} recommended on ${rec.tooth} (${fmtDate(rec.recommendedOn)})`,
-            `Recorded reason: ${note.text}`,
-            `Already explained to patient: recorded reason + general crown information`,
-            `Contact: ${patient.channel.toLowerCase()} · appointment times: ${patient.timePreferenceLabel.toLowerCase()}`,
-            'Patient has not decided on treatment; nothing has been booked for the crown',
-          ],
-        };
+        const q = c.asked.filter((a) => a.startsWith('q:')).map((a) => faq(s, tx.faq, a.slice(2))?.q).filter(Boolean).join(' / ') || `Questions about ${tx.a}`;
+        const h = { id: nextId(s, 'h'), caseId: c.id, at: s.now, to: 'dentist' as const, routedTo: provider.short, question: q, status: 'open' as const };
         s.handoffs[h.id] = h;
         c.handoffId = h.id;
-        event(s, c, 'coordinator', 'handoff', `Question routed to ${provider.short}’s team with context`,
-          'Patient agreed to a discussion. The question, the recorded reason, and what was already explained were shared automatically so the dentist can answer directly.');
+        event(s, c, 'coordinator', 'handoff', `Question sent to ${provider.short}’s team`, 'Patient agreed to a call. The question and the recorded reason were shared so the dentist can answer directly.');
       }
       const slots = offer(s, c, 'consult', more ? 'more' : 'preferred');
-      send(s, c, k('consult_offer'), `${more ? 'Here are a few more' : `Great. Here are the next openings for a 20-minute discussion with ${provider.short}`}:\n\n${slotLines(slots)}`, {
-        tag: 'Discussion times offered', slotIds: slots.map((x) => x.id), sources: { kbIds: ['kb-sched'], noteIds: [] },
-      });
+      send(s, c, k('consult_offer'), [T(`${more ? 'Here are a few more' : `Great. Here are the next openings for a 20-minute call with ${provider.short}`}:\n${slotLines(slots)}`)], 'Call times offered');
       c.stage = 'consult_offering';
-      suppressPending(s, c, 'Patient is choosing a time now.', ['followup', 'close_no_response']);
-      scheduleFollowup(s, c);
+      restartTimer();
       break;
     }
     case optionId.startsWith('consult_slot:'): {
       const sl = getSlot(optionId.split(':')[1])!;
-      const appt: Appointment = {
-        id: nextId(s, 'appt'), caseId: c.id, slotId: sl.id, providerId: sl.providerId, type: 'consult',
-        start: sl.start, end: sl.end, status: 'booked', bookedAt: s.now,
-      };
+      const appt: Appointment = { id: nextId(s, 'appt'), caseId: c.id, slotId: sl.id, providerId: sl.providerId, type: 'consult', start: sl.start, end: sl.end, status: 'booked', bookedAt: s.now };
       s.appointments[appt.id] = appt;
       s.bookedSlots[sl.id] = appt.id;
       c.consultAppointmentId = appt.id;
       c.offeredSlotIds = [];
       c.status = 'consult_booked';
       c.stage = 'consult_booked';
-      const h = c.handoffId ? s.handoffs[c.handoffId] : undefined;
-      if (h) h.status = 'discussion_booked';
-      suppressPending(s, c, 'Discussion booked; no scheduling follow-up needed.');
-      send(s, c, k('consult_booked'), `Booked: a 20-minute discussion with ${provider.short} on ${fmtDate(sl.start)} at ${fmtTime(sl.start)}. I’ve shared your question with the dental team so they’re ready.\n\nYour crown isn’t scheduled. You can decide after you’ve talked.`, { tag: 'Discussion booked' });
-      event(s, c, 'coordinator', 'booking', `Dentist discussion booked · ${fmtDateTime(sl.start)}`,
-        `20-minute discussion with the treating dentist, per scheduling policy. Treatment remains not scheduled until the patient decides.`, { kbIds: ['kb-sched'] });
-      schedule(s, c, 'consult_check', sl.end + 2 * HOUR, 'Check in after dentist discussion');
+      if (c.handoffId) s.handoffs[c.handoffId].status = 'discussion_booked';
+      suppressPending(s, c, 'Call booked; no scheduling follow-up needed.');
+      send(s, c, k('consult_booked'), [T(`Booked: a 20-minute call with ${provider.short} on ${fmtWDM(sl.start)} at ${fmtTime(sl.start)}. I’ve shared your question with the team so they’re ready. Nothing else is booked; you can decide after you’ve talked.`)], 'Call booked');
+      event(s, c, 'coordinator', 'booking', `Call with ${provider.short} booked · ${fmtWDM(sl.start)}, ${fmtTime(sl.start)}`, 'Treatment stays unbooked until the patient decides.');
+      schedule(s, c, 'consult_check', sl.end + 2 * HOUR, 'Check in after the call');
       break;
     }
     case optionId === 'reschedule_consult': {
       const a = activeConsult(s, c);
       if (a) cancelAppointment(s, a, 'Patient asked to change the time');
-      event(s, c, 'patient', 'cancellation', 'Patient changed the discussion time', 'Previous discussion slot released back to the schedule.');
-      if (c.handoffId) s.handoffs[c.handoffId].status = 'shared';
+      event(s, c, 'patient', 'cancellation', 'Patient changed the call time', 'Previous slot released back to the schedule.');
+      if (c.handoffId) s.handoffs[c.handoffId].status = 'open';
       c.status = 'awaiting_reply';
       const slots = offer(s, c, 'consult', 'preferred');
       suppressPending(s, c, 'Rescheduling in progress.');
-      send(s, c, k('consult_offer'), `No problem, I’ve released that time. Here are other openings with ${provider.short}:\n\n${slotLines(slots)}`, {
-        tag: 'Discussion times offered', slotIds: slots.map((x) => x.id),
-      });
+      send(s, c, k('consult_offer'), [T(`No problem, I’ve released that time. Other openings with ${provider.short}:\n${slotLines(slots)}`)], 'Call times offered');
       c.stage = 'consult_offering';
       scheduleFollowup(s, c);
       break;
     }
-    case optionId === 'consult_no': {
+    case optionId === 'consult_no':
       c.stage = 'explained';
-      send(s, c, k('consult_no'), 'No problem. Whenever you’re ready, I can share appointment times for the crown, or check back with you later.', { tag: 'Acknowledged' });
-      suppressPending(s, c, 'Patient is engaged; follow-up timer restarted.', ['followup', 'close_no_response']);
-      scheduleFollowup(s, c);
+      send(s, c, k('consult_no'), [T('No problem. Whenever you’re ready, I can share appointment times, or check back with you later.')], 'Acknowledged');
+      restartTimer();
       break;
-    }
     case optionId === 'consult_later':
-      pause(nextWeek(s.now), 'Patient wants time to think about a discussion.');
+      pause(nextWeek(s.now), 'Patient wants time to think about a call.');
       break;
-    case optionId === 'book' || optionId === 'ready' || optionId === 'proceed' || optionId === 'reopen': {
+    case ['book', 'ready', 'proceed', 'reopen'].includes(optionId): {
       if (c.barrier === 'unknown') c.barrier = 'scheduling';
-      if (optionId === 'proceed' || optionId === 'reopen') {
-        event(s, c, 'patient', 'reply', 'Patient chose to proceed with treatment', 'Explicit patient decision recorded.');
-      }
       if (c.status === 'paused') {
         event(s, c, 'coordinator', 'resume', 'Pause ended early by patient', 'Patient replied before the requested check-back date.');
         c.pausedUntil = undefined;
       }
-      const prefNote = patient.timePreference !== 'any' ? ` (${patient.timePreferenceLabel.toLowerCase()}, as you prefer)` : '';
-      offerTimes('preferred', `Here are the next openings with ${provider.short} for your crown visit${prefNote}. Plan for about 90 minutes:`);
+      const pref = patient.timePreference !== 'any' ? ` (${patient.timePreferenceLabel.toLowerCase()}, as you prefer)` : '';
+      offerTimes('preferred', `Here are the next openings with ${provider.short}${pref}.`);
       break;
     }
     case optionId === 'more_times':
-      offerTimes('more', `Here are a few more openings with ${provider.short}, any time of day:`);
+      offerTimes('more', `Here are a few more openings with ${provider.short}, any time of day.`);
       break;
     case optionId.startsWith('slot:'): {
       const sl = getSlot(optionId.split(':')[1])!;
       if (s.bookedSlots[sl.id] || activeAppt(s, c)) break; // never double-book
-      const appt: Appointment = {
-        id: nextId(s, 'appt'), caseId: c.id, slotId: sl.id, providerId: sl.providerId, type: 'crown_prep',
-        start: sl.start, end: sl.end, status: 'booked', bookedAt: s.now,
-      };
+      const end = sl.start + tx.minutes * MIN;
+      const appt: Appointment = { id: nextId(s, 'appt'), caseId: c.id, slotId: sl.id, providerId: sl.providerId, type: 'treatment', start: sl.start, end, status: 'booked', bookedAt: s.now };
       s.appointments[appt.id] = appt;
       s.bookedSlots[sl.id] = appt.id;
       c.appointmentId = appt.id;
@@ -458,26 +423,21 @@ function handleReply(s: State, caseId: string, optionId: string) {
       c.stage = 'booked';
       c.pausedUntil = undefined;
       suppressPending(s, c, 'Appointment exists, so scheduling messages are no longer needed.');
-      send(s, c, k('booked'), `You’re booked: ${fmtDate(sl.start)} at ${fmtTime(sl.start)} with ${provider.short} at ${PRACTICE.name}, ${PRACTICE.address}. I’ll send a reminder the day before. If anything changes, just reply here.`, {
-        sections: [{ kind: 'general', label: 'Good to know · scheduling policy', text: s.kb['kb-sched'].patientText, refId: 'kb-sched' }],
-        sectionsAfter: true, tag: 'Booking confirmed', sources: { kbIds: ['kb-sched'], noteIds: [] },
-      });
-      event(s, c, 'coordinator', 'booking', `Crown appointment booked · ${fmtDateTime(sl.start)}`,
-        `Patient chose this time. Verified against requirements: treating dentist (${provider.short}), 90-minute crown block, at least 24h out, slot free in the practice schedule. Written to the schedule (simulated).`,
-        { kbIds: ['kb-sched'] });
+      send(s, c, k('booked'), [T(`You’re booked: ${fmtWDM(sl.start)} at ${fmtTime(sl.start)} with ${provider.short} at ${PRACTICE.name}, ${PRACTICE.address}. I’ll send a reminder the day before. If anything changes, just reply here.`)], 'Booked');
+      event(s, c, 'coordinator', 'booking', `Booked · ${fmtWDM(sl.start)}, ${fmtTime(sl.start)}`,
+        `Patient chose this time. Checked: treating dentist (${provider.short}), ${dur(tx.minutes)}, at least 24 hours out, slot free. Written to the appointment book.`, { faq: ['scheduling#rules'] });
       const reminderAt = withTime(addDays(sl.start, -1), 17);
-      if (reminderAt > s.now) schedule(s, c, 'reminder', reminderAt, 'Send appointment reminder');
-      else schedule(s, c, 'visit_check', sl.end, 'Check schedule after visit');
+      if (reminderAt > s.now) schedule(s, c, 'reminder', reminderAt, 'Reminder');
+      else schedule(s, c, 'visit_check', end, 'Check schedule after visit');
       break;
     }
     case optionId === 'reschedule' || optionId === 'cancel_appt': {
       const a = activeAppt(s, c);
       if (a) cancelAppointment(s, a, 'Patient request');
-      event(s, c, 'patient', 'cancellation', optionId === 'reschedule' ? 'Patient asked to reschedule' : 'Patient cancelled the appointment',
-        'Slot released back to the practice schedule. Coordination reopened.');
+      event(s, c, 'patient', 'cancellation', optionId === 'reschedule' ? 'Patient asked to reschedule' : 'Patient cancelled', 'Slot released back to the appointment book. Follow-up reopened.');
       c.appointmentId = undefined;
       c.next = undefined;
-      offerTimes('preferred', `Done, I’ve ${optionId === 'reschedule' ? 'released your previous time' : 'cancelled that appointment'}. Here are other openings with ${provider.short}:`);
+      offerTimes('preferred', `Done, I’ve ${optionId === 'reschedule' ? 'released your previous time' : 'cancelled that appointment'}. Other openings with ${provider.short}.`);
       break;
     }
     case optionId === 'pause_week':
@@ -488,70 +448,62 @@ function handleReply(s: State, caseId: string, optionId: string) {
       break;
     case optionId === 'decline': {
       const consult = activeConsult(s, c);
-      if (consult) cancelAppointment(s, consult, 'Patient declined treatment');
+      if (consult) cancelAppointment(s, consult, 'Patient declined');
       suppressPending(s, c, 'Patient declined. All outreach stops.');
-      c.status = 'declined';
-      c.stage = 'closed';
-      c.offeredSlotIds = [];
-      c.pausedUntil = undefined;
-      c.closedReason = 'Patient decided not to proceed.';
-      send(s, c, k('decline'), `Understood. I’ve noted that you’ve decided not to go ahead with the crown, and I won’t send more reminders about it. If anything changes, reply here or call us at ${PRACTICE.phone}.`, { tag: 'Decision recorded' });
-      event(s, c, 'patient', 'closed', 'Patient declined treatment', 'Patient decision respected and visible to the dentist. No further outreach.');
+      Object.assign(c, { status: 'declined', stage: 'closed', offeredSlotIds: [], pausedUntil: undefined, hold: undefined, closedReason: 'Patient decided not to go ahead.' });
+      send(s, c, k('decline'), [T(`Understood. I’ve noted that you’ve decided not to go ahead with the ${tx.label.toLowerCase()}, and I won’t send more reminders about it. If anything changes, reply here or call us at ${PRACTICE.phone}.`)], 'Decision recorded');
+      event(s, c, 'patient', 'closed', 'Patient decided not to go ahead', 'Decision respected and visible to the dentist. No further outreach.');
       break;
     }
     case optionId === 'stop': {
       suppressPending(s, c, 'Patient opted out of messages.');
-      send(s, c, k('stop'), 'You’ve been unsubscribed from Harbor Dental follow-up texts. Reply START to opt back in.', { tag: 'Opt-out confirmed' });
-      c.status = 'opted_out';
-      c.stage = 'closed';
-      c.offeredSlotIds = [];
-      c.pausedUntil = undefined;
-      c.closedReason = 'Patient replied STOP.';
-      const a = activeAppt(s, c);
-      event(s, c, 'patient', 'closed', 'Patient stopped messages',
-        `Contact permission ended. All future outreach cancelled.${a ? ' Existing appointment kept on the schedule; no reminders will be sent.' : ''}`);
+      send(s, c, k('stop'), [T(patient.channel === 'email' ? 'You’ve been unsubscribed from Harbor Dental follow-up emails.' : 'You’ve been unsubscribed from Harbor Dental follow-up texts. Reply START to opt back in.')], 'Opt-out confirmed');
+      Object.assign(c, { status: 'opted_out', stage: 'closed', offeredSlotIds: [], pausedUntil: undefined, closedReason: 'Patient opted out.' });
+      event(s, c, 'patient', 'closed', 'Patient stopped messages', `Contact permission ended. All future outreach cancelled.${activeAppt(s, c) ? ' Existing appointment kept; no reminders will be sent.' : ''}`);
       break;
     }
-    case optionId === 'start': {
+    case optionId === 'start':
       c.status = 'awaiting_reply';
       c.stage = 'intro';
       c.closedReason = undefined;
-      send(s, c, k('start'), `You’re opted back in. ${provider.short} recommended a crown for your ${rec.toothPlain}. Would you like to schedule, or do you have questions first?`, { tag: 'Opt-in confirmed' });
+      send(s, c, k('start'), [T(`You’re opted back in. `), C(`${provider.short} recommended ${tx.a} for your ${rec.area}`, noteRef), T('. Would you like to schedule, or do you have questions first?')], 'Opt-in confirmed');
       event(s, c, 'patient', 'resume', 'Patient opted back in', 'Contact permission restored by the patient.');
       scheduleFollowup(s, c);
       break;
-    }
   }
+  void first;
 }
 
 // ── scheduled wake-ups ───────────────────────────────────────────────────────
 
 function runWake(s: State, c: Case, wake: Wake, replay = false) {
   if (s.processedKeys[wake.key]) {
-    event(s, c, 'coordinator', 'duplicate', 'Duplicate event ignored',
-      `“${wake.label}” (key ${wake.key}) was already processed on ${fmtDateTime(s.processedKeys[wake.key])}. No message or booking was created.`);
+    event(s, c, 'coordinator', 'duplicate', 'Duplicate event ignored', `“${wake.label}” was already processed on ${fmtDateTime(s.processedKeys[wake.key])}. Nothing was sent or booked.`);
     return;
   }
   s.processedKeys[wake.key] = s.now;
   s.lastWake = { caseId: c.id, wake };
   if (!replay && c.next?.key === wake.key) c.next = undefined;
 
-  const { patient, rec, provider, note } = ctx(s, c);
+  const { patient, rec, provider, note, tx, first } = ctx(s, c);
   const k = (n: string) => `msg:${wake.key}:${n}`;
-  const first = patient.firstName;
+  const optOut = patient.channel === 'email' ? ' You can unsubscribe anytime.' : ' Reply STOP to opt out.';
 
   switch (wake.type) {
     case 'outreach': {
-      // Observe: is there still an unscheduled recommendation we may contact about?
-      if (!canContact(c) || !isOpen(c)) return;
+      if (!canContact(c) || !isOpen(c) || c.hold) return;
       if (activeAppt(s, c)) {
-        event(s, c, 'coordinator', 'suppressed', 'Outreach skipped: appointment already exists', 'An existing booking suppresses scheduling messages.');
+        event(s, c, 'coordinator', 'suppressed', 'First message skipped: already booked', 'An existing booking suppresses scheduling messages.');
         return;
       }
       const days = Math.round((s.now - rec.recommendedOn) / DAY);
-      send(s, c, k('outreach'), `Hi ${first}, this is ${PRACTICE.name}. At your ${fmtDate(rec.recommendedOn).split(', ')[1]} visit, ${provider.short} recommended a crown for your ${rec.toothPlain}. We haven’t seen it on the schedule yet, so I wanted to check in.\n\nWould you like to book a time, or do you have questions first? Reply STOP to opt out.`, { tag: 'First outreach' });
-      event(s, c, 'coordinator', 'outreach', 'First outreach sent automatically',
-        `Treatment plan shows a crown recommended ${days} days ago with no appointment. Contact preference: ${patient.channel.toLowerCase()}, ${patient.contactWindow.toLowerCase()}. No approval step required.`);
+      send(s, c, k('outreach'), [
+        T(`Hi ${first}, this is ${PRACTICE.name}. `),
+        C(`At your ${fmtDM(rec.recommendedOn)} visit, ${provider.short} recommended ${tx.a} for your ${rec.area}`, note.id),
+        T(`. We haven’t seen it on the schedule yet. Would you like to book a time, or do you have questions first?${optOut}`),
+      ], 'First message');
+      event(s, c, 'coordinator', 'outreach', `First ${patient.channel === 'email' ? 'email' : 'text'} sent`,
+        `Treatment plan shows ${tx.a} recommended ${days} days ago with nothing booked. Contact preference: ${patient.channel}, ${patient.contactWindow}. No approval step.`);
       c.status = 'awaiting_reply';
       c.stage = 'intro';
       c.nudgesSent = 0;
@@ -559,64 +511,55 @@ function runWake(s: State, c: Case, wake: Wake, replay = false) {
       return;
     }
     case 'followup': {
-      if (c.status !== 'awaiting_reply') {
-        event(s, c, 'coordinator', 'suppressed', 'Follow-up skipped', `Case is ${c.status.replace('_', ' ')}; follow-up not needed.`);
+      if (c.status !== 'awaiting_reply' || c.hold) {
+        event(s, c, 'coordinator', 'suppressed', 'Follow-up skipped', c.hold ? 'A person is handling this patient.' : `Case is ${c.status.replace('_', ' ')}; follow-up not needed.`);
         return;
       }
       if (c.nudgesSent >= MAX_FOLLOWUPS) {
-        schedule(s, c, 'close_no_response', s.now, 'Close outreach (cap reached)');
+        schedule(s, c, 'close_no_response', s.now, 'Stop outreach');
         return;
       }
       c.nudgesSent += 1;
-      const n = c.nudgesSent;
-      const tag = `Follow-up ${n} of ${MAX_FOLLOWUPS}`;
+      const tag = `Follow-up ${c.nudgesSent} of ${MAX_FOLLOWUPS}`;
       if (c.stage === 'offering' || c.stage === 'consult_offering') {
-        const type = c.stage === 'offering' ? 'crown_prep' : 'consult';
-        const slots = offer(s, c, type, 'preferred');
-        send(s, c, k('fu'), `Hi ${first}, still happy to help you find a time with ${provider.short}. These are open now:\n\n${slotLines(slots)}\n\nOr reply if you’d rather I check back later.`, { tag, slotIds: slots.map((x) => x.id) });
+        const slots = offer(s, c, c.stage === 'offering' ? 'treatment' : 'consult', 'preferred');
+        send(s, c, k('fu'), [T(`Hi ${first}, just checking in. These times are still open with ${provider.short}:\n${slotLines(slots)}\n\nWant me to hold one?`)], tag);
       } else if (c.stage === 'handoff_offer') {
-        send(s, c, k('fu'), `Hi ${first}, just checking in. Would a short discussion with ${provider.short} about your question help? No pressure either way.`, { tag });
+        send(s, c, k('fu'), [T(`Hi ${first}, just checking in. Would a short call with ${provider.short} about your question help? No pressure either way.`)], tag);
       } else if (c.stage === 'post_consult') {
-        send(s, c, k('fu'), `Hi ${first}, checking in after your discussion with ${provider.short}. Would you like to schedule the crown, or do you need more time? Either is fine.`, { tag });
+        send(s, c, k('fu'), [T(`Hi ${first}, checking in after your call with ${provider.short}. Would you like to schedule, or do you need more time? Either is fine.`)], tag);
+      } else if (c.nudgesSent === MAX_FOLLOWUPS) {
+        const w = faq(s, tx.faq, 'why');
+        send(s, c, k('fu'), [T(`Hi ${first}, this is our last reminder about the ${tx.label.toLowerCase()} ${provider.short} recommended. `), F(w?.a ?? '', `${tx.faq}#why`), T(' Reply anytime if you’d like to book.')], tag);
       } else {
-        send(s, c, k('fu'), `Hi ${first}, just checking in about the crown ${provider.short} recommended. I can share a few appointment times, or explain why it was recommended. Whatever helps.`, { tag });
+        send(s, c, k('fu'), [T(`Hi ${first}, just checking in about the ${tx.label.toLowerCase()} ${provider.short} recommended. I can share a few times, or answer any questions.`)], tag);
       }
-      event(s, c, 'coordinator', 'message', `${tag} sent`,
-        `No reply since the last message. Records rechecked: no appointment, not paused, contact allowed. Unanswered outreach is capped at the first message plus ${MAX_FOLLOWUPS} follow-ups.`);
+      event(s, c, 'coordinator', 'message', `${tag} sent`, `No reply since the last message. Records rechecked: nothing booked, not paused, contact allowed. Capped at the first message plus ${MAX_FOLLOWUPS} follow-ups.`);
       if (c.nudgesSent < MAX_FOLLOWUPS) scheduleFollowup(s, c);
       else schedule(s, c, 'close_no_response', nextContactTime(withTime(s.now + CLOSE_AFTER, 10)), 'Stop outreach if still no reply');
       return;
     }
     case 'close_no_response': {
       if (c.status !== 'awaiting_reply') return;
-      c.status = 'no_response';
-      c.stage = 'closed';
-      c.offeredSlotIds = [];
-      c.closedReason = 'No reply after first message + 2 follow-ups.';
-      c.lastAction = { label: 'Outreach stopped (cap)', at: s.now };
-      event(s, c, 'coordinator', 'closed', 'Outreach stopped: no reply after 3 messages',
-        'Cap reached (first message + 2 follow-ups). No further automated messages. A reply from the patient reopens the case.');
+      Object.assign(c, { status: 'no_response', stage: 'closed', offeredSlotIds: [], closedReason: 'No reply after the first message and 2 follow-ups.' });
+      event(s, c, 'coordinator', 'closed', 'Outreach stopped: no reply after 3 messages', 'Cap reached. A reply from the patient reopens the case.');
       return;
     }
     case 'resume': {
-      // Observe again before acting: things may have changed during the pause.
       if (c.status !== 'paused') return;
       c.pausedUntil = undefined;
       if (activeAppt(s, c)) {
         c.status = 'booked';
         c.stage = 'booked';
-        event(s, c, 'coordinator', 'suppressed', 'Check-back skipped: appointment already exists', 'Appointment found in the practice schedule.');
+        event(s, c, 'coordinator', 'suppressed', 'Check-back skipped: already booked', 'Appointment found in the appointment book.');
         return;
       }
       c.status = 'awaiting_reply';
-      const slots = offer(s, c, 'crown_prep', 'preferred');
+      const slots = offer(s, c, 'treatment', 'preferred');
       const prev = s.events.filter((e) => e.caseId === c.id && e.kind === 'pause').pop();
-      send(s, c, k('resume'), `Hi ${first}, checking back as you asked. ${provider.short} has these openings for your crown visit:\n\n${slotLines(slots)}\n\nTap a time to book it, or let me know if you need longer.`, {
-        tag: 'Check-back with new times', slotIds: slots.map((x) => x.id), sources: { kbIds: ['kb-sched'], noteIds: [] },
-      });
-      event(s, c, 'coordinator', 'resume', 'Resumed after patient-requested pause',
-        `Remembered the pause${prev ? ` requested ${fmtDate(prev.at)}` : ''}. Rechecked records first: no appointment, treatment not complete, contact allowed. Availability refreshed (${patient.timePreferenceLabel.toLowerCase()}).`,
-        { kbIds: ['kb-sched'] });
+      send(s, c, k('resume'), [T(`Hi ${first}, checking back as you asked. ${provider.short} has these openings. `), F(`Plan for about ${dur(tx.minutes)}`, 'scheduling#lengths'), T(`:\n${slotLines(slots)}\n\nWant one of these, or do you need longer?`)], 'Check-back');
+      event(s, c, 'coordinator', 'resume', 'Resumed after the requested pause',
+        `Remembered the pause${prev ? ` from ${fmtWDM(prev.at)}` : ''}. Rechecked first: nothing booked, treatment not complete, contact allowed. Fresh times offered.`);
       c.stage = 'offering';
       scheduleFollowup(s, c);
       return;
@@ -624,10 +567,8 @@ function runWake(s: State, c: Case, wake: Wake, replay = false) {
     case 'reminder': {
       const a = activeAppt(s, c);
       if (!a) return;
-      if (canContact(c)) {
-        send(s, c, k('reminder'), `Reminder: your crown appointment with ${provider.short} is tomorrow, ${fmtDate(a.start)} at ${fmtTime(a.start)} (about 90 minutes). Reply here if you need to reschedule.`, { tag: 'Reminder sent' });
-        event(s, c, 'coordinator', 'message', 'Appointment reminder sent', 'Booked appointment confirmed in the schedule the day before.');
-      }
+      send(s, c, k('reminder'), [T(`Reminder: your appointment with ${provider.short} is tomorrow, ${fmtWDM(a.start)} at ${fmtTime(a.start)} (about ${dur(tx.minutes)}). Reply here if anything changes.`)], 'Reminder');
+      if (canContact(c)) event(s, c, 'coordinator', 'message', 'Reminder sent', 'Appointment confirmed in the book the day before.');
       schedule(s, c, 'visit_check', a.end, 'Check schedule after visit');
       return;
     }
@@ -636,17 +577,14 @@ function runWake(s: State, c: Case, wake: Wake, replay = false) {
       if (!a) return;
       a.status = 'time_passed';
       c.status = 'visit_passed';
-      c.lastAction = { label: 'Visit time passed', at: s.now };
-      event(s, c, 'practice', 'record', 'Appointment time passed · awaiting completion record',
-        'Attendance alone does not mean the treatment is complete. The case stays open until the practice record confirms the crown is seated.',
-        { kbIds: ['kb-sched'] });
-      schedule(s, c, 'completion_check', withTime(addDays(s.now, 14), 9), 'Recheck completion record');
+      event(s, c, 'practice', 'record', 'Visit time passed · waiting for completion record',
+        'Attending isn’t the same as finishing treatment. The case stays open until treatment history shows it complete.');
+      schedule(s, c, 'completion_check', withTime(addDays(s.now, 14), 9), 'Recheck treatment history');
       return;
     }
     case 'completion_check': {
       if (c.status !== 'visit_passed') return;
-      event(s, c, 'coordinator', 'record', 'No completion record yet · still tracking',
-        'Expected seat visit window has passed without a completion entry. Visible to the front desk in the worklist; no patient message sent.');
+      event(s, c, 'coordinator', 'record', 'No completion record yet · still tracking', 'Visible to staff in the list; no patient message sent.');
       return;
     }
     case 'consult_check': {
@@ -657,18 +595,11 @@ function runWake(s: State, c: Case, wake: Wake, replay = false) {
       const consultNote = { ...tpl, id: tpl.id === 'note-consult' ? `note-consult-${c.id}` : tpl.id, patientId: c.patientId, providerId: c.providerId, date: a.start };
       s.notes[consultNote.id] = consultNote;
       if (c.handoffId) s.handoffs[c.handoffId].status = 'discussed';
-      event(s, c, 'practice', 'record', `${provider.short} added a discussion note`, 'Practice record updated after the dentist discussion (simulated).', { noteIds: [consultNote.id] });
+      event(s, c, 'practice', 'record', `${provider.short} added a note from the call`, 'Patient chart updated after the call.', { noteIds: [consultNote.id] });
       c.status = 'awaiting_reply';
       c.stage = 'post_consult';
-      send(s, c, k('post'), `It’s completely your decision. Would you like to schedule the crown, take more time, or not go ahead?`, {
-        lead: `Hi ${first}, thanks for talking with ${provider.short}. Here\u2019s what was recorded from your discussion:`,
-        sections: [
-          { kind: 'clinician', label: `From ${provider.short}’s discussion note · ${fmtDate(a.start)}`, text: consultNote.patientSummary, refId: consultNote.id },
-        ],
-        tag: 'Decision check-in', sources: { kbIds: [], noteIds: [consultNote.id, note.id] },
-      });
-      event(s, c, 'coordinator', 'message', 'Checked in after dentist discussion',
-        'Summarized only what the dentist recorded. Patient decides whether to proceed; treatment remains incomplete.', { noteIds: [consultNote.id] });
+      send(s, c, k('post'), [T(`Hi ${first}, thanks for talking with ${provider.short}. `), C(consultNote.patientSummary, consultNote.id), T('\n\nIt’s your decision. Would you like to schedule, take more time, or not go ahead?')], 'Decision check-in');
+      event(s, c, 'coordinator', 'message', 'Checked in after the call', 'Summarised only what the dentist recorded. The patient decides.', { noteIds: [consultNote.id] });
       scheduleFollowup(s, c);
       return;
     }
@@ -677,7 +608,7 @@ function runWake(s: State, c: Case, wake: Wake, replay = false) {
 
 /** Process every due wake-up, in time order, up to `until`. */
 export function tick(s: State, until: number) {
-  for (let guard = 0; guard < 500; guard++) {
+  for (let guard = 0; guard < 1000; guard++) {
     let best: Case | undefined;
     for (const id of s.caseOrder) {
       const c = s.cases[id];
@@ -690,72 +621,81 @@ export function tick(s: State, until: number) {
   s.now = Math.max(s.now, until);
 }
 
-// ── reviewer / practice-system events ────────────────────────────────────────
+// ── practice and staff events ────────────────────────────────────────────────
 
 function practiceCancel(s: State, c: Case) {
   const a = activeAppt(s, c) ?? activeConsult(s, c);
   if (!a) return;
-  const { patient, provider } = ctx(s, c);
-  const wasConsult = a.type === 'consult';
-  cancelAppointment(s, a, `${provider.short} unavailable (practice schedule change)`);
+  const { first, provider, tx } = ctx(s, c);
+  const isCall = a.type === 'consult';
+  cancelAppointment(s, a, `${provider.short} unavailable`);
   s.blockedDays[dayKey(a.providerId, a.start)] = `${provider.short} unavailable`;
-  event(s, c, 'practice', 'cancellation', `Practice schedule: ${wasConsult ? 'discussion' : 'appointment'} on ${fmtDate(a.start)} cancelled`,
-    `${provider.short} is no longer available that day. Detected from the practice schedule feed; that day is removed from offered times.`);
+  event(s, c, 'practice', 'cancellation', `Appointment book: ${isCall ? 'call' : 'appointment'} on ${fmtWDM(a.start)} cancelled`,
+    `${provider.short} is no longer available that day. That day is removed from offered times.`);
   suppressPending(s, c, 'The appointment it depended on was cancelled.');
-  if (wasConsult) c.consultAppointmentId = undefined;
+  if (isCall) c.consultAppointmentId = undefined;
   else c.appointmentId = undefined;
-
   if (c.status === 'opted_out' || c.status === 'paused') {
-    event(s, c, 'coordinator', 'suppressed', 'Not contacting patient about the cancellation',
-      c.status === 'opted_out' ? 'Patient has opted out of messages.' : 'Patient asked us to pause; we will offer new times when the pause ends.');
+    event(s, c, 'coordinator', 'suppressed', 'Not contacting patient about the cancellation', c.status === 'opted_out' ? 'Patient opted out.' : 'Patient asked us to pause; new times come when the pause ends.');
     return;
   }
   c.status = 'awaiting_reply';
-  const type = wasConsult ? 'consult' : 'crown_prep';
-  const slots = offer(s, c, type, 'preferred');
+  const slots = offer(s, c, isCall ? 'consult' : 'treatment', 'preferred');
   s.now += 5 * MIN;
-  send(s, c, `msg:${a.id}:practice-cancel`, `Hi ${patient.firstName}, I’m sorry, ${provider.short} is no longer available on ${fmtDate(a.start)}, so we’ve had to cancel your ${wasConsult ? 'discussion' : 'crown appointment'}. Here are the next openings:\n\n${slotLines(slots)}\n\nTap one to rebook, or I can check back with you later.`, {
-    tag: 'Cancellation recovery', slotIds: slots.map((x) => x.id),
-  });
-  event(s, c, 'coordinator', 'resume', 'Coordination reopened after cancellation',
-    'Cancellation reopens coordination unless the patient has paused or stopped messages. New times offered automatically.');
-  c.stage = wasConsult ? 'consult_offering' : 'offering';
-  if (wasConsult && c.handoffId) s.handoffs[c.handoffId].status = 'shared';
+  send(s, c, `msg:${a.id}:practice-cancel`, [T(`Hi ${first}, I’m sorry, ${provider.short} is no longer available on ${fmtWDM(a.start)}, so we’ve had to cancel your ${isCall ? 'call' : tx.label.toLowerCase() + ' appointment'}. Here are the next openings:\n${slotLines(slots)}\n\nWant one of these, or should I check back later?`)], 'Cancellation recovery');
+  event(s, c, 'coordinator', 'resume', 'Reopened after cancellation', 'A cancellation reopens follow-up unless the patient paused or stopped messages.');
+  c.stage = isCall ? 'consult_offering' : 'offering';
+  if (isCall && c.handoffId) s.handoffs[c.handoffId].status = 'open';
   scheduleFollowup(s, c);
 }
 
 function recordCompletion(s: State, c: Case) {
   if (c.status === 'completed') return;
-  const { patient } = ctx(s, c);
+  const { first, tx } = ctx(s, c);
   const a = c.appointmentId ? s.appointments[c.appointmentId] : undefined;
   if (a && a.status !== 'cancelled') a.status = 'completed';
   suppressPending(s, c, 'Treatment complete. Nothing left to follow up on.');
-  const wasOptedOut = c.status === 'opted_out';
   c.next = undefined;
-  event(s, c, 'practice', 'completion', 'Practice record: crown seated · treatment complete',
-    'Completion confirmed by the practice record, not inferred from attendance. Case closed; all follow-up stopped.');
-  if (!wasOptedOut) {
+  event(s, c, 'practice', 'completion', 'Treatment history: completed', 'Confirmed by the practice record, not inferred from attendance. Follow-up closed.');
+  if (c.status !== 'opted_out') {
     s.now += 5 * MIN;
-    send(s, c, `msg:${c.id}:completed`, `Hi ${patient.firstName}, our records show your crown treatment is complete. That’s the last message you’ll get from us about it. Thanks for taking care of it!`, { tag: 'Completion notice' });
+    send(s, c, `msg:${c.id}:completed`, [T(`Hi ${first}, our records show your ${tx.label.toLowerCase()} is complete. That’s the last message you’ll get from us about it. Thanks for taking care of it!`)], 'Completion notice');
   }
-  c.status = 'completed';
-  c.stage = 'closed';
-  c.offeredSlotIds = [];
-  c.pausedUntil = undefined;
-  c.closedReason = 'Practice record confirms treatment complete.';
-  c.lastAction = { label: 'Treatment completed', at: s.now };
+  Object.assign(c, { status: 'completed', stage: 'closed', offeredSlotIds: [], pausedUntil: undefined, hold: undefined, closedReason: 'Treatment history shows it complete.' });
+}
+
+function resolveHold(s: State, c: Case) {
+  if (!c.hold) return;
+  c.hold = undefined;
+  if (c.handoffId && s.handoffs[c.handoffId].to === 'front_desk') s.handoffs[c.handoffId].status = 'resolved';
+  event(s, c, 'staff', 'resume', 'Front desk called the patient', 'Marked as called by staff. Automated follow-up resumes.');
+  scheduleFollowup(s, c);
+}
+
+function staffPause(s: State, c: Case) {
+  if (!isOpen(c) || c.status === 'paused') return;
+  const until = nextWeek(s.now);
+  suppressPending(s, c, 'Paused by staff.');
+  c.status = 'paused';
+  c.stage = 'paused';
+  c.pausedUntil = until;
+  event(s, c, 'staff', 'pause', `Paused by staff until ${fmtWDM(until)}`, 'No messages go out until then.');
+  schedule(s, c, 'resume', until, 'Check back');
 }
 
 // ── public API ───────────────────────────────────────────────────────────────
 
-export function dispatch(prev: State, action: Action): State {
-  const s: State = structuredClone(prev);
+/** Apply an action to a draft state in place. */
+export function apply(s: State, action: Action) {
   switch (action.type) {
     case 'reply':
       handleReply(s, action.caseId, action.optionId);
       break;
     case 'advance':
       tick(s, s.now + action.ms);
+      break;
+    case 'advanceTo':
+      tick(s, action.at);
       break;
     case 'jumpNext': {
       const target = nextWakeAt(s, action.caseId);
@@ -768,11 +708,44 @@ export function dispatch(prev: State, action: Action): State {
     case 'recordCompletion':
       if (s.cases[action.caseId]) recordCompletion(s, s.cases[action.caseId]);
       break;
+    case 'sendNow': {
+      // Only the draft the user saw: a double-tap can't send the step after it.
+      const c = s.cases[action.caseId];
+      if (c?.next && c.next.key === action.key) runWake(s, c, c.next);
+      break;
+    }
+    case 'staffPause':
+      if (s.cases[action.caseId]) staffPause(s, s.cases[action.caseId]);
+      break;
+    case 'resolveHold':
+      if (s.cases[action.caseId]) resolveHold(s, s.cases[action.caseId]);
+      break;
+    case 'sync':
+      s.lastSync = s.now;
+      break;
     case 'replayLast':
       if (s.lastWake) runWake(s, s.cases[s.lastWake.caseId], s.lastWake.wake, true);
       break;
   }
+}
+
+export function dispatch(prev: State, action: Action): State {
+  const s: State = structuredClone(prev);
+  apply(s, action);
   return s;
+}
+
+/** Dry run: what would the pending wake-up do? Returns the message it would send, if any. */
+export function previewNext(s: State, caseId: string): { at: number; label: string; message?: Message } | null {
+  const c = s.cases[caseId];
+  if (!c?.next) return null;
+  const draft: State = structuredClone(s);
+  const dc = draft.cases[caseId];
+  draft.now = Math.max(draft.now, dc.next!.at);
+  const before = draft.messages.length;
+  runWake(draft, dc, dc.next!);
+  const message = draft.messages.slice(before).find((m) => m.caseId === caseId && m.from === 'coordinator');
+  return { at: c.next.at, label: c.next.label, message };
 }
 
 export function nextWakeAt(s: State, caseId?: string): number | undefined {

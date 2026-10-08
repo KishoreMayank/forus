@@ -7,8 +7,8 @@ export function at(y: number, m: number, d: number, h = 0, min = 0): number {
   return new Date(y, m - 1, d, h, min).getTime();
 }
 
-/** Demo clock starts on Monday, Oct 12 2026 at 9:00 AM. */
-export const DEMO_START = at(2026, 10, 12, 9, 0);
+/** Demo clock starts on Monday, Oct 12 2026 at 9:30 AM. */
+export const DEMO_START = at(2026, 10, 12, 9, 30);
 
 export function startOfDay(t: number): number {
   const d = new Date(t);
@@ -77,3 +77,11 @@ export function fmtDayRelative(t: number, now: number): string {
   if (diff < 0 && diff > -7) return `${-diff} days ago`;
   return fmtDate(t);
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** "28 Sep" */
+export const fmtDM = (t: number) => { const d = new Date(t); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; };
+/** "Thu 15 Oct" */
+export const fmtWDM = (t: number) => { const d = new Date(t); return `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
+/** "9:00" / "1:30" — 12-hour clock without AM/PM, as people write it in texts. */
+export const fmtHM = (t: number) => { const d = new Date(t); const h = d.getHours() % 12 || 12; return `${h}:${String(d.getMinutes()).padStart(2, '0')}`; };

@@ -4,7 +4,7 @@
 export type Barrier = 'unknown' | 'understanding' | 'scheduling';
 
 export type CaseStatus =
-  | 'awaiting_reply' // a message is out and we are waiting on the patient
+  | 'awaiting_reply' // a message is out, or about to go out, and we are waiting on the patient
   | 'paused' // patient asked us to check back later
   | 'consult_booked' // dentist discussion is booked; treatment decision pending
   | 'booked' // treatment appointment is on the schedule
@@ -15,7 +15,7 @@ export type CaseStatus =
   | 'no_response'; // outreach cap reached without a reply
 
 export type Stage =
-  | 'intro' // first outreach sent
+  | 'intro' // first outreach sent (or scheduled)
   | 'explained' // recommendation explained
   | 'offering' // appointment times offered
   | 'handoff_offer' // record can't answer; offered dentist discussion
@@ -40,8 +40,10 @@ export interface Wake {
   type: WakeType;
   at: number;
   key: string; // idempotency key; a processed key is never acted on twice
-  label: string; // human-readable "next action"
+  label: string; // human-readable "next step"
 }
+
+export type TreatmentKey = 'crown' | 'filling' | 'root_canal' | 'deep_cleaning' | 'implant' | 'bridge';
 
 export interface Provider {
   id: string;
@@ -54,26 +56,24 @@ export interface Patient {
   id: string;
   name: string;
   firstName: string;
-  initials: string;
   age: number;
   phone: string;
-  channel: 'Text message';
-  contactWindow: string;
+  email: string;
+  channel: 'text' | 'email';
+  contactWindow: string; // "weekdays 9–6"
   timePreference: 'morning' | 'afternoon' | 'any';
   timePreferenceLabel: string;
   lastVisit: string;
-  visitHistory: { date: string; summary: string }[];
 }
 
 export interface Recommendation {
   id: string;
   patientId: string;
   providerId: string;
-  treatment: string; // "Crown"
-  tooth: string; // "#30 · lower right first molar"
-  toothPlain: string; // "lower right back tooth"
+  treatment: TreatmentKey;
+  tooth: string; // as charted, e.g. "#30"
+  area: string; // plain language, e.g. "lower right back tooth"
   recommendedOn: number;
-  appointmentType: 'crown_prep';
   noteId: string;
 }
 
@@ -85,25 +85,32 @@ export interface ClinicianNote {
   kind: 'exam' | 'consult';
   text: string; // as charted
   patientSummary: string; // prewritten plain-language summary approved for patient use
-  covers: string[]; // what this note can answer, e.g. ['why']
+  covers: string[]; // which questions this note can answer, e.g. ['why']
 }
 
-export interface KbEntry {
-  id: string;
-  topic: string;
+/** One question in a practice FAQ file. `route` means: never answer, hand off instead. */
+export interface FaqEntry {
+  key: string;
+  q: string;
+  a?: string;
+  route?: 'dentist' | 'front_desk';
+}
+
+export interface FaqFile {
+  id: string; // "crowns"
+  file: string; // "crowns.md"
   title: string;
-  source: string;
-  owner: string;
-  lastUpdated: number;
-  summary: string;
-  patientText: string; // prewritten general explanation used in messages
-  body: { heading: string; text: string }[];
+  intro: string;
+  editedBy: string;
+  edited: number;
+  draft?: boolean;
+  entries: FaqEntry[];
 }
 
 export interface Slot {
   id: string;
   providerId: string;
-  type: 'crown_prep' | 'consult';
+  type: 'treatment' | 'consult';
   start: number;
   end: number;
 }
@@ -113,7 +120,7 @@ export interface Appointment {
   caseId: string;
   slotId: string;
   providerId: string;
-  type: 'crown_prep' | 'consult';
+  type: 'treatment' | 'consult';
   start: number;
   end: number;
   status: 'booked' | 'cancelled' | 'time_passed' | 'completed';
@@ -121,11 +128,11 @@ export interface Appointment {
   cancelledReason?: string;
 }
 
-export interface MessageSection {
-  kind: 'clinician' | 'general' | 'notice';
-  label: string;
-  text: string;
-  refId?: string;
+/** A piece of a message. `src` marks text taken from the chart or from an FAQ file. */
+export interface Part {
+  t: string;
+  src?: 'chart' | 'faq';
+  ref?: string; // note id, or "file#key"
 }
 
 export interface Message {
@@ -133,17 +140,13 @@ export interface Message {
   key: string;
   caseId: string;
   from: 'coordinator' | 'patient';
+  channel: 'text' | 'email';
   at: number;
-  text: string;
-  lead?: string; // opening line shown above sections
-  sections?: MessageSection[];
-  sectionsAfter?: boolean; // render sections below the main text
-  sources?: { kbIds: string[]; noteIds: string[] };
-  slotIds?: string[];
-  tag?: string; // short label for admin views, e.g. "Explanation"
+  parts: Part[];
+  tag?: string; // short label for activity, e.g. "Explanation"
 }
 
-export type EventActor = 'coordinator' | 'patient' | 'practice' | 'reviewer';
+export type EventActor = 'coordinator' | 'patient' | 'practice' | 'staff';
 
 export interface CaseEvent {
   id: string;
@@ -165,20 +168,21 @@ export interface CaseEvent {
     | 'closed'
     | 'record'
     | 'duplicate'
-    | 'schedule';
+    | 'schedule'
+    | 'found';
   title: string;
   why: string;
-  refs?: { kbIds?: string[]; noteIds?: string[] };
+  refs?: { faq?: string[]; noteIds?: string[] };
 }
 
 export interface Handoff {
   id: string;
   caseId: string;
   at: number;
-  routedTo: string;
+  to: 'dentist' | 'front_desk';
+  routedTo: string; // "Dr. Bell" | "Front desk"
   question: string;
-  context: string[];
-  status: 'shared' | 'discussion_booked' | 'discussed';
+  status: 'open' | 'discussion_booked' | 'discussed' | 'resolved';
 }
 
 export interface Case {
@@ -189,20 +193,18 @@ export interface Case {
   status: CaseStatus;
   stage: Stage;
   barrier: Barrier;
-  appointmentId?: string; // active treatment appointment
-  consultAppointmentId?: string; // active dentist discussion
+  appointmentId?: string;
+  consultAppointmentId?: string;
   offeredSlotIds: string[];
-  slotCursor: number; // used by "other times"
   pausedUntil?: number;
   nudgesSent: number;
   next?: Wake;
-  lastAction?: { label: string; at: number };
-  kbRefs: string[];
-  noteRefs: string[];
+  hold?: { to: 'front_desk'; reason: string; since: number }; // a person must act; no outreach meanwhile
   asked: string[];
+  faqRefs: string[];
+  noteRefs: string[];
   handoffId?: string;
   closedReason?: string;
-  script: 'main' | 'scheduling' | 'clarify' | 'background';
 }
 
 export interface State {
@@ -213,10 +215,10 @@ export interface State {
   patients: Record<string, Patient>;
   recommendations: Record<string, Recommendation>;
   notes: Record<string, ClinicianNote>;
-  kb: Record<string, KbEntry>;
+  faqs: Record<string, FaqFile>;
   appointments: Record<string, Appointment>;
   bookedSlots: Record<string, string>; // slotId -> appointmentId
-  blockedDays: Record<string, string>; // `${providerId}:${dayStart}` -> reason (provider unavailable)
+  blockedDays: Record<string, string>; // `${providerId}:${dayStart}` -> reason
   cases: Record<string, Case>;
   caseOrder: string[];
   messages: Message[];
@@ -224,11 +226,11 @@ export interface State {
   handoffs: Record<string, Handoff>;
   processedKeys: Record<string, number>;
   lastWake?: { caseId: string; wake: Wake };
+  lastSync: number;
 }
 
 export interface ReplyOption {
   id: string;
   label: string;
   group: 'primary' | 'slot' | 'more';
-  hint?: string;
 }

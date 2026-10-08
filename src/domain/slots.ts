@@ -6,9 +6,9 @@ import { HOUR, MIN, addDays, at, isWeekend, startOfDay } from './time';
 // already taken by other patients (outside this demo's records).
 
 const PROVIDERS = ['shah', 'bell'] as const;
-const CROWN_STARTS: [number, number][] = [[8, 0], [10, 0], [13, 30], [15, 30]];
+const TREATMENT_STARTS: [number, number][] = [[8, 0], [10, 0], [13, 30], [15, 30]];
 const CONSULT_STARTS: [number, number][] = [[12, 0], [12, 30], [17, 0]];
-export const CROWN_MINUTES = 90;
+export const TREATMENT_MINUTES = 90;
 export const CONSULT_MINUTES = 20;
 export const LEAD_TIME = 24 * HOUR;
 
@@ -36,9 +36,9 @@ function build() {
   for (let day = first; day < at(2027, 1, 31); day = addDays(day, 1)) {
     if (isWeekend(day)) continue;
     for (const p of PROVIDERS) {
-      for (const [h, m] of CROWN_STARTS) {
+      for (const [h, m] of TREATMENT_STARTS) {
         const start = new Date(day).setHours(h, m, 0, 0);
-        all.push({ id: slotId(p, 'crown_prep', start), providerId: p, type: 'crown_prep', start, end: start + CROWN_MINUTES * MIN });
+        all.push({ id: slotId(p, 'treatment', start), providerId: p, type: 'treatment', start, end: start + TREATMENT_MINUTES * MIN });
       }
       for (const [h, m] of CONSULT_STARTS) {
         const start = new Date(day).setHours(h, m, 0, 0);
