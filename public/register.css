@@ -563,12 +563,6 @@ body:has(.mobile-patient-dialog[open]){overflow:hidden}
 
 /* Knowledge questions are composed from saved guidance and patient records. */
 .chat-message p{white-space:pre-line}
-.practice-questions{margin-top:14px;font-size:11px;color:#526e5b}
-.practice-questions>summary{cursor:pointer;line-height:1.5}
-.practice-question-controls{display:flex;gap:8px;align-items:stretch;margin-top:10px}
-.practice-question-controls select{min-width:0;flex:1;width:0;max-width:100%;font:inherit;color:#405b49;border:1px solid #dce5dd;border-radius:5px;background:#fff;padding:8px}
-.practice-question-controls .control{flex-shrink:0}
-.practice-questions>small{display:block;margin-top:7px;font-size:10px;color:#718277;line-height:1.5}
 .preview-patient-label{font-size:11px;color:#617b69;margin-bottom:12px}
 
 .clarification-dialog{width:490px;max-height:calc(100dvh - 32px);overflow:auto}

@@ -39,9 +39,9 @@ Pushes to `main` deploy automatically through Vercel.
 ## Demonstrate the Knowledge connection
 
 1. Open Knowledge and edit “Why was a crown recommended?” Save a distinctive, appropriate sentence.
-2. Open Maya’s Communication tab. Expand “Ask a practice question,” choose that question, and click Ask Clara.
+2. Reset the sample workflow, open Maya’s Communication tab, and select “Why was this recommended?”
 3. The next reply combines Maya’s recorded recommendation with the saved practice answer. “Sources used” shows both records.
-4. Change the FAQ again. New replies use the new text; earlier replies retain their original source snapshots.
+4. Change the FAQ again and start a fresh sample conversation. New replies use the new text; existing replies retain their original source snapshots.
 5. A filling patient uses filling guidance. Deleted FAQs are not reused, and a missing clinical rationale leads to a dentist discussion rather than a guessed reason.
 
 Responses are composed deterministically from selected questions; this is not a live language model or free-text retrieval system. Transactional confirmations use current booking/payment state. General practice questions use saved guidance, with patient records added when relevant. Knowledge changes do not rewrite prior messages. Existing messages created before this wiring retain legacy source references.
