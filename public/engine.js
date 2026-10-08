@@ -28,6 +28,14 @@ export const cardEnding=c=>String(4200+(c.chartId||0)%100).padStart(4,'0');
 export const paid=c=>(c.billing?.payments||[]).reduce((t,p)=>t+p.amount,0);
 export const balance=c=>c.billing?Math.max(0,c.billing.share-paid(c)):0;
 export const canTakePayment=c=>!!(c.billing&&c.appointment&&c.appointment.kind==='Treatment'&&balance(c)>0);
+/** After a treatment visit is booked, Clara texts the estimated share once and lets the patient pay or choose to pay at the visit. */
+export function requestPayment(s,c){
+ if(!c.billing||c.billing.requestedAt||!c.contact||!c.appointment||c.appointment.kind!=='Treatment'||balance(c)<=0)return false;
+ const b=c.billing;c.billing.requestedAt=s.now;
+ say(s,c,`Your estimated share for this visit is ${money(balance(c))}${b.insurance?` (${money(b.fee)} fee, less ${b.plan}’s ${money(b.insurance)} estimate)`:' (self-pay)'}. You can pay now with the Visa on file ending ${cardEnding(c)}, or pay when you check in.`);
+ event(s,c,'Payment requested',`Estimated share of ${money(balance(c))} sent by text. Patient chooses to pay now or at the visit.`);
+ return true;
+}
 export function ledger(s){return s.cases.flatMap(c=>(c.billing?.payments||[]).map(p=>({...p,caseId:c.id,name:c.name,treatment:c.treatment}))).sort((a,b)=>(b.at-a.at)||((b.seq||0)-(a.seq||0)));}
 export function event(s,c,title,detail){ c.events.push({id:`${c.id}-${c.events.length}`,at:s.now,title,detail}); }
 function say(s,c,text,who='agent',sources=[]){c.messages.push({id:`${c.id}-m${c.messages.length}`,at:s.now,who,text,sources});}
@@ -56,15 +64,23 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
   s.now=Math.max(s.now,c.appointment.start+c.appointment.duration*60000);c.sourceStatus='completed';c.status='completed';c.stage='done';c.wakeAt=null;
   event(s,c,'Treatment confirmed complete','The simulated practice record confirms treatment completion. Pending follow-up removed.');return {ok:true,message:'Practice record updated. Treatment complete.'};
  }
- if(type==='pay'){
-  if(!c.billing||!c.appointment||c.appointment.kind!=='Treatment')return {ok:false,message:'Payment is taken for a booked treatment visit.'};
+ if(type==='pay'||type==='payatvisit'){
+  if(!c.billing||!c.appointment||c.appointment.kind!=='Treatment')return {ok:false,message:'Payment is for a booked treatment visit.'};
+  if(!c.contact)return {ok:false,message:'Messages are stopped. The front desk collects payment at the visit.'};
   const due=balance(c);if(due<=0)return {ok:false,message:'Already paid. No balance due.'};
-  const method=payload==='desk'?`${PAY_METHODS.desk}`:`${PAY_METHODS.card} · Visa ending ${cardEnding(c)}`;
-  const n=c.billing.payments.length;
-  s.paySeq=(s.paySeq||0)+1;c.billing.payments.push({id:`${c.id}-pay${n+1}`,at:s.now,seq:s.paySeq,amount:due,method,receipt:`R-${c.chartId||c.id}-${n+1}`});
-  event(s,c,'Payment received',`${money(due)} patient share · ${method}. Insurance estimate of ${money(c.billing.insurance)} billed to ${c.billing.plan}. Treatment completion still comes from treatment history.`);
-  if(c.contact)say(s,c,`We’ve received ${money(due)} toward your ${c.treatment.toLowerCase()}. Your patient balance is now ${money(balance(c))}. Receipt ${c.billing.payments.at(-1).receipt}. Your appointment remains booked for ${fmtFull(c.appointment.start)} at ${fmtTime(c.appointment.start)}.`);
-  return {ok:true,message:`${money(due)} received from ${c.name}. Billing updated in Integrations.`};
+  if(type==='payatvisit'){
+   if(c.billing.payAtVisit)return {ok:false,message:'Already noted: paying at the visit.'};
+   patient(s,c,'I’ll pay at the visit');c.billing.payAtVisit=true;
+   say(s,c,`No problem. The front desk will collect ${money(due)} when you check in on ${fmtFull(c.appointment.start)}. You can still pay here any time before then.`);
+   event(s,c,'Will pay at the visit',`Front desk to collect ${money(due)} at check-in.`);
+   return {ok:true,message:`${c.name} will pay at the visit.`};
+  }
+  const card=`Visa ending ${cardEnding(c)}`,method=`${card} · authorized by text`,n=c.billing.payments.length;
+  patient(s,c,`Pay ${money(due)} with my card ending ${cardEnding(c)}`);
+  s.paySeq=(s.paySeq||0)+1;c.billing.payments.push({id:`${c.id}-pay${n+1}`,at:s.now,seq:s.paySeq,amount:due,method,receipt:`R-${c.chartId||c.id}-${n+1}`});c.billing.payAtVisit=false;
+  say(s,c,`Thanks, ${c.name.split(' ')[0]}. ${money(due)} was charged to your ${card}. Your balance is now ${money(balance(c))}. Receipt ${c.billing.payments.at(-1).receipt}.${c.billing.insurance?` We’ll bill ${c.billing.plan} for the ${money(c.billing.insurance)} estimate.`:''} See you ${fmtFull(c.appointment.start)} at ${fmtTime(c.appointment.start)}.`);
+  event(s,c,'Payment received',`Patient authorized ${money(due)} by text · ${card}.${c.billing.insurance?` Insurance estimate of ${money(c.billing.insurance)} billed to ${c.billing.plan}.`:''} Treatment completion still comes from treatment history.`);
+  return {ok:true,message:`${c.name} paid ${money(due)} by text. Billing updated in Integrations.`};
  }
  if(type==='cancel'){
   if(!c.appointment||c.sourceStatus==='completed')return {ok:false,message:'No active appointment to cancel.'};
@@ -92,7 +108,7 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
  }else if(type==='book'){
   const choice=slots(s,c).find(x=>x.id===payload);if(!choice)return {ok:false,message:'That time is no longer available. Choose a refreshed option.'};
   const prior=c.appointment;patient(s,c,`Confirm ${fmtFull(choice.start)} at ${fmtTime(choice.start)}`);c.appointment=choice;c.status='booked';c.stage='booked';
-  say(s,c,`You’re booked for ${choice.kind.toLowerCase()} on ${fmtFull(choice.start)} at ${fmtTime(choice.start)} with ${choice.provider}, Cedar Dental. Allow ${choice.duration} minutes. You can change or cancel here.`);event(s,c,prior?'Appointment rescheduled':'Appointment booked',`${choice.provider} · ${choice.duration} minutes. Availability rechecked; ${prior?'original slot released after confirmation.':'scheduling follow-ups stopped.'}`);
+  say(s,c,`You’re booked for ${choice.kind.toLowerCase()} on ${fmtFull(choice.start)} at ${fmtTime(choice.start)} with ${choice.provider}, Cedar Dental. Allow ${choice.duration} minutes. You can change or cancel here.`);event(s,c,prior?'Appointment rescheduled':'Appointment booked',`${choice.provider} · ${choice.duration} minutes. Availability rechecked; ${prior?'original slot released after confirmation.':'scheduling follow-ups stopped.'}`);requestPayment(s,c);
  }else if(type==='pause'){
   if(c.appointment)return {ok:false,message:'Cancel your appointment before pausing scheduling.'};patient(s,c,'Contact me next week');c.status='paused';c.stage='paused';c.wakeAt=s.now+7*DAY;while([0,6].includes(new Date(c.wakeAt).getUTCDay()))c.wakeAt+=DAY;
   say(s,c,`I’ll reconnect on ${fmtFull(c.wakeAt)}. No scheduling follow-ups until then. You can return here sooner if you’re ready.`);event(s,c,'Patient requested a pause',`One follow-up scheduled for ${fmtFull(c.wakeAt)}. Earlier reminders removed.`);

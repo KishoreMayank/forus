@@ -24,10 +24,11 @@ test('demo explanation to booking to payment preserves receipt and clinical stat
  assert.ok(act(s,c.id,'why').ok);assert.ok(book(s).ok);const appointment={...c.appointment};
  assert.ok(act(s,c.id,'pay','card').ok);
  assert.equal(c.status,'booked');assert.equal(c.sourceStatus,'active');assert.deepEqual(c.appointment,appointment);
- assert.match(c.messages.at(-1).text,/received \$500/);assert.match(c.messages.at(-1).text,/balance is now \$0/);
+ assert.match(c.messages.at(-1).text,/\$500 was charged/);assert.match(c.messages.at(-1).text,/balance is now \$0/);
  assert.ok(c.messages.at(-1).text.includes(c.billing.payments[0].receipt));
  const restored=JSON.parse(JSON.stringify(s));assert.equal(balance(patient(restored)),0);assert.equal(ledger(restored).length,1);
  const count=c.messages.length;assert.equal(act(s,c.id,'pay','card').ok,false);assert.equal(c.messages.length,count);
 });
-test('payment does not send a receipt after a contact stop',()=>{const s=seed(),c=patient(s);book(s);act(s,c.id,'stop');const count=c.messages.length;assert.ok(act(s,c.id,'pay','desk').ok);assert.equal(c.messages.length,count);});
+test('patients cannot authorize payment by text after stopping messages',()=>{const s=seed(),c=patient(s);book(s);act(s,c.id,'stop');const count=c.messages.length;assert.equal(act(s,c.id,'pay').ok,false);assert.equal(c.billing.payments.length,0);assert.equal(c.messages.length,count);});
 test('discussion appointments cannot collect treatment payment',()=>{const s=seed(),c=patient(s);act(s,c.id,'consult');act(s,c.id,'book',slots(s,c)[0].id);assert.equal(act(s,c.id,'pay','card').ok,false);assert.equal(c.billing.payments.length,0);});
+test('booking a treatment texts the estimate once; the patient authorizes payment or chooses to pay at the visit',()=>{const s=seed(),c=patient(s);book(s);assert.ok(c.billing.requestedAt);assert.ok(c.messages.at(-1).text.includes('$500'));const n=c.messages.length;act(s,c.id,'slots');act(s,c.id,'book',slots(s,c)[0].id);assert.equal(c.messages.filter(m=>m.text.startsWith('Your estimated share')).length,1);assert.ok(act(s,c.id,'payatvisit').ok);assert.equal(act(s,c.id,'payatvisit').ok,false);assert.equal(balance(c),500);const r=act(s,c.id,'pay');assert.ok(r.ok);assert.equal(c.messages.at(-2).who,'patient');assert.ok(c.billing.payments[0].method.includes('authorized by text'));assert.equal(balance(c),0);assert.ok(n>0);});
