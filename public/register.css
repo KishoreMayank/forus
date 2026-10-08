@@ -555,3 +555,5 @@ body:has(.mobile-patient-dialog[open]){overflow:hidden}
 
 /* Appointment confirmation stays distinct from sample patient replies. */
 .control[data-action=book]:disabled{opacity:1;background:#e5ece7;border-color:#d5dfd8;color:#65776b}
+
+.attention-context .control{margin-top:12px;max-width:100%;white-space:normal;text-align:left}
