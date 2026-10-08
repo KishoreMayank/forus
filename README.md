@@ -45,3 +45,7 @@ Pushes to `main` deploy automatically through Vercel.
 5. A filling patient uses filling guidance. Deleted FAQs are not reused, and a missing clinical rationale leads to a dentist discussion rather than a guessed reason.
 
 Responses are composed deterministically from selected questions; this is not a live language model or free-text retrieval system. Transactional confirmations use current booking/payment state. General practice questions use saved guidance, with patient records added when relevant. Knowledge changes do not rewrite prior messages. Existing messages created before this wiring retain legacy source references.
+
+## Manual intervention
+
+On Alex’s Needs attention card, choose **Add clinical reason**. On Ella’s card, choose **Add clarification**. Enter the author and a patient-facing explanation, then **Save and share with patient**. The demo saves the note, records its author and time, clears the review flag, and composes Clara’s reply from that clarification. Clinical reasons update the chart; front-desk notes stay with billing and leave clinical notes and estimate amounts unchanged. Empty submissions are rejected. Stopped contact is respected.

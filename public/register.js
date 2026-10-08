@@ -3,9 +3,9 @@ import {relevantKnowledge} from './knowledge-response.js?v=2';
 import {scheduledMessage,updateScheduledMessage} from './scheduled-message.js?v=3';
 import {setupSourceData} from './source-data.js?v=12';
 import {setupCalendar} from './calendar.js?v=7';
-import {seed,act,advance,slots,nextAction,fmtFull,fmtDate,fmtTime,VERSION,knowledge,money,balance,paid,canTakePayment,ledger} from './engine.js?v=13';
+import {seed,act,advance,slots,nextAction,fmtFull,fmtDate,fmtTime,VERSION,knowledge,money,balance,paid,canTakePayment,ledger} from './engine.js?v=14';
 
-import {extendPatients} from './demo-patients.js?v=17';
+import {extendPatients} from './demo-patients.js?v=18';
 
 const KEY='cedar-register-v1';
 function initialState(){
@@ -80,7 +80,7 @@ function billingPanel(c){
  const b=c.billing;if(!b)return '';
  const due=balance(c),last=b.payments[b.payments.length-1];
  const action=last&&!due?`<p class="billing-paid"><span class="paid-tag">Paid</span>${money(last.amount)} · ${fmtDate(last.at)}, ${fmtTime(last.at)} · ${escape(last.method)}</p>`:canTakePayment(c)&&b.requestedAt?`<p class="billing-status"><span class="live-dot" aria-hidden="true"></span>${b.payAtVisit?`Paying at the visit · front desk collects ${money(due)} at check-in`:`Payment requested by text · ${fmtDate(b.requestedAt)}, ${fmtTime(b.requestedAt)} · waiting for ${escape(c.name.split(' ')[0])}`}</p>`:`<p class="billing-note">${c.appointment?'Payment is for treatment visits.':isClosed(c)?'No visit booked.':'Clara texts the estimate once a treatment visit is booked.'}</p>`;
- return `<section class="billing-panel"><div class="billing-head"><h3>Insurance &amp; billing</h3><span>${escape(b.plan)}</span></div><div class="billing-sum"><p><strong>${money(b.share)}</strong> patient share${paid(c)&&due?` · ${money(due)} due`:''}</p><span>${money(b.fee)} fee · ${b.insurance?`${money(b.insurance)} insurance estimate`:'no insurance'}</span></div>${action}</section>`;
+ return `<section class="billing-panel"><div class="billing-head"><h3>Insurance &amp; billing</h3><span>${escape(b.plan)}</span></div><div class="billing-sum"><p><strong>${money(b.share)}</strong> patient share${paid(c)&&due?` · ${money(due)} due`:''}</p><span>${money(b.fee)} fee · ${b.insurance?`${money(b.insurance)} insurance estimate`:'no insurance'}</span></div>${action}${b.clarification?`<p class="billing-note"><strong>${escape(b.clarification.author)}</strong> · ${escape(b.clarification.note)}</p>`:''}</section>`;
 }
 const canBookTreatment=c=>c.consult&&!c.note.includes('does not include the patient-specific rationale');
 function sourceDisclosure(m,c){
@@ -115,7 +115,7 @@ function replies(c){
 }
 function reminderPreview(c){const m=scheduledMessage(state,c);if(!m)return '';return `<div class="scheduled-message ${m.paused?'is-paused':''}" aria-label="Scheduled message"><div class="scheduled-caption">${m.paused?'Paused':'Scheduled'} · ${fmtFull(m.at)}, ${fmtTime(m.at)} · ${m.kind}</div><div class="scheduled-bubble"><p>${escape(m.text)}</p></div><div class="scheduled-actions">${m.paused?'<button type="button" data-action="reminder-resume" aria-label="Resume reminder">Resume</button>':'<button type="button" data-action="reminder-send" aria-label="Send reminder now">Send now</button><button type="button" data-action="reminder-pause" aria-label="Pause reminder">Pause</button>'}</div></div>`;}
 function conversation(c){let previousDay='';return `<div class="conversation"><div class="message-history">${c.messages.map(m=>{const date=new Date(m.at);const day=date.toISOString().slice(0,10);const dateLabel=new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}).format(date);const separator=day!==previousDay?`<div class="conversation-date"><time datetime="${date.toISOString().slice(0,10)}">${escape(dateLabel)}</time></div>`:'';previousDay=day;return `${separator}<div class="message-turn ${m.who}"><article class="chat-message ${m.who}"><div class="chat-who">${m.who==='patient'?c.name.split(' ')[0]:'Clara · AI assistant'}<span class="message-channel">${m.channel==='email'?'Email':'Text'}</span></div><p>${escape(m.text)}</p>${sourceDisclosure(m,c)}</article><time class="message-time" datetime="${date.toISOString()}">${fmtTime(m.at)}</time></div>`;}).join('')}${thinking?.id===c.id?'<div class="thinking-message" role="status" aria-live="polite"><span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>Clara is thinking…</span></div>':reminderPreview(c)}</div>${c.appointment?`<div class="booking-summary"><div class="booking-date"><span>${new Intl.DateTimeFormat('en-US',{month:'short',timeZone:'UTC'}).format(c.appointment.start)}</span><strong>${new Date(c.appointment.start).getUTCDate()}</strong></div><div class="booking-info"><div class="booking-title">${c.appointment.kind==='Discussion'?'Dentist discussion':'Treatment appointment'}<span class="booking-confirmed"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 8 2.5 2.5L12 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>${c.sourceStatus==='completed'?'Completed':'Confirmed'}</span></div><div class="booking-time">${new Intl.DateTimeFormat('en-US',{weekday:'long',timeZone:'UTC'}).format(c.appointment.start)} · ${fmtTime(c.appointment.start)}</div><div class="booking-provider">${escape(c.appointment.provider)} · ${c.appointment.duration||60} min</div></div>${c.appointment.kind==='Treatment'&&c.billing&&!balance(c)&&c.billing.payments.length?`<div class="booking-payment-receipt"><span class="paid-tag">Paid · ${money(paid(c))}</span><small>Receipt ${escape(c.billing.payments.at(-1).receipt)} · Balance ${money(balance(c))}</small></div>`:''}</div>`:''}<div class="response-area">${replies(c)}</div></div>`;}
-function renderCase(){const c=current();if(!c){document.querySelector('#selected-patient').innerHTML='';return;}document.querySelector('#selected-patient').innerHTML=`<section class="patient-record active-case"><div class="active-case-heading"><div><h2>${c.name}</h2><small>${c.treatment} · Chart #${c.chartId}</small></div>${status(c)}</div>${groupOf(c)==='attention'?`<div class="attention-context"><span class="attention-owner">${escape(attentionFor(c).owner)}</span><div><strong>${escape(attentionFor(c).title)}</strong><p>${escape(attentionFor(c).detail)}</p>${c.contact?`<button class="control" data-action="resolve" data-primary="true">${c.attention?`Estimate confirmed · send to ${escape(c.name.split(' ')[0])}`:'Mark reason added to chart'}</button>`:''}</div></div>`:''}<div class="case-nav" role="tablist" aria-label="Patient detail">${[['overview','Patient info'],['conversation','Communication']].map(([id,name])=>`<button role="tab" aria-selected="${tab===id}" data-action="tab" data-value="${id}">${name}</button>`).join('')}</div><div role="tabpanel">${tab==='overview'?overview(c):conversation(c)}</div></section>`;const history=document.querySelector('.message-history');if(history)history.scrollTop=history.scrollHeight;syncMobilePatient();if(thinking)document.querySelectorAll('[data-action]').forEach(b=>{if(!['select','tab','reset','close-patient'].includes(b.dataset.action))b.disabled=true;});}
+function renderCase(){const c=current();if(!c){document.querySelector('#selected-patient').innerHTML='';return;}document.querySelector('#selected-patient').innerHTML=`<section class="patient-record active-case"><div class="active-case-heading"><div><h2>${c.name}</h2><small>${c.treatment} · Chart #${c.chartId}</small></div>${status(c)}</div>${groupOf(c)==='attention'?`<div class="attention-context"><span class="attention-owner">${escape(attentionFor(c).owner)}</span><div><strong>${escape(attentionFor(c).title)}</strong><p>${escape(attentionFor(c).detail)}</p>${c.contact?`<button class="control" data-action="resolve" data-primary="true">${c.attention?'Add clarification':'Add clinical reason'}</button>`:''}</div></div>`:''}<div class="case-nav" role="tablist" aria-label="Patient detail">${[['overview','Patient info'],['conversation','Communication']].map(([id,name])=>`<button role="tab" aria-selected="${tab===id}" data-action="tab" data-value="${id}">${name}</button>`).join('')}</div><div role="tabpanel">${tab==='overview'?overview(c):conversation(c)}</div></section>`;const history=document.querySelector('.message-history');if(history)history.scrollTop=history.scrollHeight;syncMobilePatient();if(thinking)document.querySelectorAll('[data-action]').forEach(b=>{if(!['select','tab','reset','close-patient'].includes(b.dataset.action))b.disabled=true;});}
 const mobilePatientMedia=matchMedia('(max-width:900px)');
 const mobilePatient=document.createElement('dialog');
 mobilePatient.className='mobile-patient-dialog register-layout';
@@ -135,6 +135,27 @@ function syncMobilePatient(){
  mobilePatient.querySelector('.mobile-patient-body').innerHTML=document.querySelector('#selected-patient').innerHTML;
  const history=mobilePatient.querySelector('.message-history');if(history)history.scrollTop=history.scrollHeight;
 }
+const clarificationDialog=document.createElement('dialog');
+clarificationDialog.className='clarification-dialog';
+clarificationDialog.setAttribute('aria-labelledby','clarification-title');
+clarificationDialog.innerHTML='<form><h2 id="clarification-title">Add clarification</h2><p id="clarification-context"></p><label for="clarification-author">Added by</label><input id="clarification-author" name="author" required maxlength="100"><label for="clarification-note">Patient-facing explanation</label><textarea id="clarification-note" name="note" required maxlength="4000" rows="5" placeholder="Enter the reason or clarification you want Clara to share."></textarea><small>Saved to this patient’s record. Clara will use it in her next reply.</small><p class="clarification-error" role="alert"></p><div class="clarification-actions"><button type="button" class="control" data-cancel-clarification>Cancel</button><button type="submit" class="control" data-primary="true">Save and share with patient</button></div></form>';
+document.body.append(clarificationDialog);
+const clarificationForm=clarificationDialog.querySelector('form');let clarificationPatient=null;
+function openClarification(){
+ const c=current(),attention=attentionFor(c);if(!attention)return;
+ clarificationPatient=c.id;clarificationForm.reset();clarificationDialog.querySelector('.clarification-error').textContent='';
+ clarificationForm.elements.author.value=attention.owner;
+ clarificationDialog.querySelector('h2').textContent=c.attention?'Add front desk clarification':'Add clinical reason';
+ clarificationDialog.querySelector('#clarification-context').textContent=`${c.name} · ${c.treatment}. ${attention.detail}`;
+ clarificationDialog.showModal();clarificationForm.elements.note.focus();
+}
+clarificationDialog.querySelector('[data-cancel-clarification]').addEventListener('click',()=>clarificationDialog.close());
+clarificationForm.addEventListener('submit',event=>{
+ event.preventDefault();const note=clarificationForm.elements.note.value.trim(),author=clarificationForm.elements.author.value.trim();
+ if(!note||!author){clarificationDialog.querySelector('.clarification-error').textContent='Enter an explanation and who added it.';return;}
+ if(thinking||state.selected!==clarificationPatient){clarificationDialog.querySelector('.clarification-error').textContent='Reopen this form for the selected patient.';return;}
+ clarificationDialog.close();tab='conversation';perform('resolve',{note,author});
+});
 function focusReplies(){if(document.activeElement&&document.activeElement!==document.body)return;(mobilePatient.open?mobilePatient:document.querySelector('#selected-patient'))?.querySelector('.response-options button,.attention-context button')?.focus({preventScroll:true});}
 function perform(type,value){
  if(thinking)return;
@@ -163,7 +184,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  else if(a==='advance'){chosen=null;notify(advance(state));render();}
  else if(a==='complete')perform('complete');
  else if(a==='reset'){clearTimeout(thinkingTimer);thinkingTimer=null;thinking=null;if(mobilePatient.open)mobilePatient.close();state=initialState();query='';filter='all';tab='overview';chosen=null;render();document.querySelector('.demo-reset-inline')?.focus({preventScroll:true});notify('Demo reset. Ready for a new walkthrough.');}
- else if(a==='resolve')perform('resolve');
+ else if(a==='resolve')openClarification();
  else if(a==='clear'){query='';filter='all';render();}
 });
 document.addEventListener('input',e=>{if(e.target.id==='patient-search'){query=e.target.value;renderRows();}});

@@ -70,22 +70,29 @@ export function act(s,id,type,payload,context={}){const c=s.cases.find(x=>x.id==
   event(s,c,'Treatment confirmed complete','Treatment history confirms the treatment was completed. Pending follow-up removed.');return {ok:true,message:'Practice record updated. Treatment complete.'};
  }
  if(type==='resolve'){
-  const first=c.name.split(' ')[0];
-  if(c.attention){
-   const b=c.billing;c.attention=null;c.status='engaged';c.stage='explained';c.wakeAt=null;
-   if(c.contact&&b)say(s,c,`The front desk confirmed your estimate: ${money(b.share)} patient share${b.insurance?` (${money(b.fee)} fee, less the ${money(b.insurance)} ${b.plan} is expected to cover)`:''}. Would you like to find a time?`);
-   event(s,c,'Estimate confirmed','Front desk reviewed fees and benefits. Clara sent the estimated share to the patient.');
-   return {ok:true,message:`Estimate confirmed and sent to ${first}.`};
+  const billingReview=!!c.attention,clinicalReview=c.note.includes('does not include the patient-specific rationale');
+  if(!billingReview&&!clinicalReview)return {ok:false,message:'Nothing needs review for this patient.'};
+  const note=typeof payload?.note==='string'?payload.note.trim():'',author=typeof payload?.author==='string'?payload.author.trim():'';
+  if(!note||note.length>4000)return {ok:false,message:'Enter a clarification of up to 4,000 characters.'};
+  if(!author||author.length>100)return {ok:false,message:'Enter who is adding this clarification.'};
+  const clarification={id:`${c.id}-clarification-${(c.clarifications||[]).length+1}`,at:s.now,author,note,kind:billingReview?'billing':'clinical'};
+  (c.clarifications||=[]).push(clarification);
+  if(billingReview){
+   const b=c.billing;c.attention=null;if(b)b.clarification={...clarification};
+   const estimate=b?`${money(b.share)} patient share${b.insurance?` (${money(b.fee)} fee, less the ${money(b.insurance)} ${b.plan} is expected to cover)`:' (self-pay)'}`:'';
+   if(c.contact)say(s,c,`${author} added this clarification: “${note}”${estimate?`\n\nYour current estimate is ${estimate}.`:''} Would you like to find a time?`,'agent',[
+    {id:clarification.id,kind:'chart',title:'Front desk clarification',source:`${author} · ${fmtDate(s.now)}`,text:note},
+    ...(b?[{id:'billing',kind:'chart',title:'Insurance & billing',source:c.name,text:estimate}]:[])
+   ]);
+   event(s,c,'Estimate clarified',`${author}: ${note}`);
+  }else{
+   c.note=`${author} · ${fmtDate(s.now)}: ${note}`;
+   const response=composeAnswer(c,'why',context.knowledge??loadKnowledge().entries);c.sources=response.sources.map(x=>x.id);
+   if(c.contact)say(s,c,`${author} added the reason to your chart. ${response.text}`,'agent',response.sources);
+   event(s,c,'Reason added to chart',`${author}: ${note}`);
   }
-  if(c.note.includes('does not include the patient-specific rationale')){
-   c.note='Dr. Lee · Oct 12: Tooth 30 has a large old filling with a crack along the back wall. A crown was recommended to protect the tooth from breaking.';
-   c.explanation='Tooth 30 has a large old filling with a crack along the back. A crown protects the tooth from breaking further. The team can answer questions before the visit; you decide whether to proceed.';
-   c.status='engaged';c.stage='explained';c.wakeAt=null;c.sources=['note'];
-   if(c.contact){const response=composeAnswer(c,'why',context.knowledge??loadKnowledge().entries);say(s,c,`Dr. Lee added the reason to your chart. ${response.text}`,'agent',response.sources);}
-   event(s,c,'Reason added to chart','Dr. Lee recorded the patient-specific reason. Clara shared it with the patient.');
-   return {ok:true,message:`Reason added. Clara explained it to ${first}.`};
-  }
-  return {ok:false,message:'Nothing needs review for this patient.'};
+  if(c.contact&&!c.appointment&&c.status!=='paused'){c.status='engaged';c.stage='explained';c.wakeAt=null;}
+  return {ok:true,message:`Clarification saved${c.contact?` and shared with ${c.name.split(' ')[0]}`:''}.`};
  }
  if(type==='pay'||type==='payatvisit'){
   if(!c.billing||!c.appointment||c.appointment.kind!=='Treatment')return {ok:false,message:'Payment is for a booked treatment visit.'};

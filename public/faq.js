@@ -1,5 +1,5 @@
-import {seed} from './engine.js?v=13';
-import {extendPatients} from './demo-patients.js?v=17';
+import {seed} from './engine.js?v=14';
+import {extendPatients} from './demo-patients.js?v=18';
 import {treatmentDescriptions} from './treatment-knowledge.js?v=3';
 import {key,DELETED_KEY,BUILT_IN_TOPICS,loadKnowledge} from './knowledge-store.js?v=1';
 import {composeAnswer,treatmentTopic} from './knowledge-response.js?v=2';
