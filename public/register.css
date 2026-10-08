@@ -516,3 +516,7 @@ dialog p.pay-fine{font-size:10px;margin:4px 0 18px}
 .demo-reset-inline{font:inherit;font-size:10px;color:#849189;background:none;border:0;border-radius:5px;padding:8px 4px;cursor:pointer}
 .demo-reset-inline:hover{color:#476650;background:#f3f6f3}
 @media(max-width:650px){.app-main>.title-row>.patient-header-actions{flex:0 0 auto;gap:8px}.patient-header-actions [data-open-calendar]{min-height:40px;padding:9px 12px}.demo-reset-inline{min-height:36px}}
+
+.patient-header-actions .demo-reset-inline{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;min-height:30px;flex:0 0 30px;padding:0;border:1px solid #e0e7e1;border-radius:6px;background:#fff;color:#819187}
+.demo-reset-inline svg{width:15px;height:15px}
+.patient-header-actions .demo-reset-inline:hover{background:#f1f6f2;border-color:#b6c9bb;color:#476650}
