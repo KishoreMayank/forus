@@ -4,48 +4,51 @@ import { initialState } from './domain/init';
 import { STATE_VERSION } from './domain/seed';
 import type { State } from './domain/types';
 
-const KEY = 'treatment-follow-up-demo-v2';
+const KEY = 'harbor-follow-up';
 
-export type Page = 'patients' | 'knowledge';
+export type View = 'patients' | 'knowledge' | 'integrations';
+export type Filter = 'all' | 'attention' | 'progress' | 'booked' | 'closed';
 
-interface Ui {
-  selectedId: string;
-  page: Page;
-  kbId: string;
+export interface Ui {
+  view: View;
+  selectedId: string | null;
+  tab: 'patient' | 'conversation';
+  filter: Filter;
+  faqFile: string;
+  integration: string | null;
+  calendarOpen: boolean;
+  showSources: boolean;
 }
 
-interface Persisted {
-  state: State;
-  ui: Ui;
-}
+const defaultUi: Ui = {
+  view: 'patients', selectedId: null, tab: 'patient', filter: 'all', faqFile: 'crowns',
+  integration: null, calendarOpen: false, showSources: false,
+};
 
-const defaultUi: Ui = { selectedId: 'maya', page: 'patients', kbId: 'kb-crown' };
+interface Persisted { state: State; ui: Ui }
 
 function load(): Persisted {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as Persisted;
-      if (p.state?.version === STATE_VERSION) return { state: p.state, ui: { ...defaultUi, ...p.ui } };
+      if (p.state?.version === STATE_VERSION) return { state: p.state, ui: { ...defaultUi, ...p.ui, calendarOpen: false } };
     }
   } catch {
-    /* storage unavailable: fall through to fresh sample data */
+    /* storage unavailable: start from the sample practice */
   }
   return { state: initialState(), ui: defaultUi };
 }
 
-export interface Toast {
-  id: number;
-  text: string;
-  detail?: string;
-}
+export interface Toast { id: number; text: string; detail?: string }
 
 interface Store {
   state: State;
   ui: Ui;
   setUi: (patch: Partial<Ui>) => void;
-  act: (a: Action) => void;
+  act: (a: Action, toast?: string) => void;
   reset: () => void;
+  notify: (text: string, detail?: string) => void;
   toast: Toast | null;
 }
 
@@ -55,7 +58,7 @@ function summarize(prev: State, next: State): string | undefined {
   const fresh = next.events.slice(prev.events.length).filter((e) => e.actor === 'coordinator' || e.actor === 'practice');
   if (!fresh.length) return undefined;
   const names = [...new Set(fresh.map((e) => next.patients[next.cases[e.caseId].patientId].firstName))];
-  return `${fresh.length} automatic step${fresh.length === 1 ? '' : 's'} for ${names.join(', ')}`;
+  return `${fresh.length} automatic step${fresh.length === 1 ? '' : 's'} · ${names.join(', ')}`;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -67,44 +70,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(KEY, JSON.stringify({ state, ui }));
     } catch {
-      /* ignore quota / privacy mode */
+      /* ignore quota / private mode */
     }
   }, [state, ui]);
 
-  const showToast = useCallback((text: string, detail?: string) => {
+  const notify = useCallback((text: string, detail?: string) => {
     window.clearTimeout(timer.current);
     setToast({ id: Date.now(), text, detail });
-    timer.current = window.setTimeout(() => setToast(null), 3800);
+    timer.current = window.setTimeout(() => setToast(null), 3600);
   }, []);
 
-  const act = useCallback(
-    (a: Action) => {
-      setAll((cur) => {
-        const next = engineDispatch(cur.state, a);
-        if (a.type !== 'reply') {
-          if (a.type === 'advance' || a.type === 'jumpNext') {
-            queueMicrotask(() => showToast('Time moved forward', summarize(cur.state, next) ?? 'Nothing was due.'));
-          }
-        }
-        return { ...cur, state: next };
-      });
-    },
-    [showToast],
-  );
+  const act = useCallback((a: Action, label?: string) => {
+    setAll((cur) => {
+      const next = engineDispatch(cur.state, a);
+      if (label) {
+        const detail = summarize(cur.state, next) ?? 'Nothing else was due.';
+        queueMicrotask(() => notify(label, detail));
+      }
+      return { ...cur, state: next };
+    });
+  }, [notify]);
 
   const setUi = useCallback((patch: Partial<Ui>) => setAll((cur) => ({ ...cur, ui: { ...cur.ui, ...patch } })), []);
 
   const reset = useCallback(() => {
-    try {
-      localStorage.removeItem(KEY);
-    } catch {
-      /* ignore */
-    }
-    setAll({ state: initialState(), ui: { ...defaultUi } });
-    showToast('Demo reset', 'Sample patients restored.');
-  }, [showToast]);
+    try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+    setAll({ state: initialState(), ui: defaultUi });
+    notify('Demo reset', 'Sample practice restored to Mon 12 Oct, 9:30 AM.');
+  }, [notify]);
 
-  const value = useMemo(() => ({ state, ui, setUi, act, reset, toast }), [state, ui, setUi, act, reset, toast]);
+  const value = useMemo(() => ({ state, ui, setUi, act, reset, notify, toast }), [state, ui, setUi, act, reset, notify, toast]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

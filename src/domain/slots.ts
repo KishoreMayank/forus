@@ -105,3 +105,8 @@ export function findSlots(
   }
   return out;
 }
+
+/** All practice slots in a time range (for the appointment book view). */
+export function slotsBetween(from: number, to: number): Slot[] {
+  return slots().all.filter((s) => s.start >= from && s.start < to);
+}

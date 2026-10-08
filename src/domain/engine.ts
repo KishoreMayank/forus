@@ -772,3 +772,13 @@ export function currentAppointment(s: State, c: Case): Appointment | undefined {
   const ids = [c.appointmentId, c.consultAppointmentId].filter(Boolean) as string[];
   return ids.map((id) => s.appointments[id]).find((a) => a && a.status !== 'cancelled');
 }
+
+/** Dry run: the reply a patient would get to a question, composed by the real engine. */
+export function previewAnswer(s: State, caseId: string, optionId: string): Message | undefined {
+  const draft: State = structuredClone(s);
+  const c = draft.cases[caseId];
+  Object.assign(c, { asked: [], stage: 'explained', status: 'awaiting_reply', hold: undefined, appointmentId: undefined, consultAppointmentId: undefined, handoffId: undefined });
+  const before = draft.messages.length;
+  apply(draft, { type: 'reply', caseId, optionId });
+  return draft.messages.slice(before).find((m) => m.from === 'coordinator');
+}

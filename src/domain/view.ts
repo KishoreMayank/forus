@@ -122,3 +122,18 @@ export function sortCases(s: State, cases: Case[], group: Group): Case[] {
   }
   return cases;
 }
+
+/** Which scripted reply would ask this FAQ question, for a given patient (null if it's not a patient question). */
+export function optionForFaq(s: State, c: Case, fileId: string, key: string): string | null {
+  const tx = TREATMENTS[s.recommendations[c.recommendationId].treatment];
+  if (fileId === tx.faq) return key === 'why' ? 'why' : `q:${key}`;
+  if (fileId === 'the-appointment' && key === 'visit') return 'visit';
+  if (fileId === 'costs' && key === 'cost') return 'cost';
+  if (fileId === 'scheduling') return 'book';
+  return null;
+}
+
+/** How many sent messages quote an FAQ entry. */
+export function faqUses(s: State, ref: string): number {
+  return s.messages.filter((m) => m.parts.some((p) => p.ref === ref)).length;
+}
