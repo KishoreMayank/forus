@@ -149,6 +149,17 @@ function fillBillingLive(){
  el.innerHTML=last?`<p><span class="live-dot" aria-hidden="true"></span>Last payment <strong>${money(last.amount)}</strong> · ${escape(last.name)} · ${fmtDate(last.at)}, ${fmtTime(last.at)}</p><p>Today ${money(total)} collected · ${today.length} ${today.length===1?'payment':'payments'} · ${money(due)} still due on booked visits</p>`:'<p>No payments recorded yet.</p>';
 }
 fillBillingLive();
+function fillLive(){
+ const set=(key,html)=>{const el=document.querySelector(`[data-live="${key}"]`);if(el)el.innerHTML=`<p><span class="live-dot" aria-hidden="true"></span>${html}</p>`;};
+ const upcoming=state.cases.filter(c=>c.appointment&&c.sourceStatus!=='completed'&&c.appointment.start>=state.now).sort((a,b)=>a.appointment.start-b.appointment.start);
+ const next=upcoming[0];
+ set('scheduling',next?`<strong>${upcoming.length}</strong> upcoming ${upcoming.length===1?'visit':'visits'} · next ${escape(next.name)}, ${fmtFull(next.appointment.start)} at ${fmtTime(next.appointment.start)}`:'No upcoming visits booked');
+ const open=state.cases.filter(c=>c.sourceStatus!=='completed').length;
+ set('charts',`<strong>${state.cases.length}</strong> charts synced · ${open} with outstanding care`);
+ const done=state.cases.filter(c=>c.sourceStatus==='completed');
+ set('history',done.length?`<strong>${done.length}</strong> ${done.length===1?'completion':'completions'} recorded · latest ${escape(done[done.length-1].name)}`:'No completions recorded yet');
+}
+fillLive();
 
 setupCalendar(()=>state);
 
