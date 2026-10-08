@@ -566,14 +566,26 @@ body { font-size: 13.5px; line-height: 1.55; letter-spacing: 0.005em; }
 .q .tx, .kvr dt, .act span, .faq-uses, .doc-meta, .count-line { color: var(--slate); }
 .act time, .src-line, .bt { color: #7E898E; }
 
-/* ── Integrations: four systems, one row each ─────────────────── */
-.systems { margin-top: 24px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; overflow: hidden; max-width: 760px; }
-.systems li + li { border-top: 1px solid var(--rule); }
-.sys { display: grid; grid-template-columns: minmax(0, 1fr) auto 120px; align-items: center; gap: 16px; width: 100%; text-align: left; padding: 16px 20px; }
-.sys-link:hover { background: var(--wash); }
-.sys-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.sys-main b { font-weight: 500; font-size: 14px; }
-.sys-main span { color: var(--slate); font-size: 12.5px; }
-.sys-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--teal); }
-.sys-open { justify-self: end; font-size: 12.5px; font-weight: 500; color: var(--teal); }
-@media (max-width: 900px) { .sys { grid-template-columns: 1fr auto; } .sys-open { grid-column: 1 / -1; justify-self: start; } .sys-open:empty { display: none; } }
+/* ── Integrations: one row per system, with what it does ────── */
+.sys-lede { color: var(--slate); font-size: 13.5px; max-width: 620px; margin-top: 18px; }
+.systems { margin-top: 22px; border-top: 1px solid var(--rule); }
+.sys { display: grid; grid-template-columns: 40px minmax(160px, 0.9fr) minmax(0, 1.6fr) auto; gap: 18px; align-items: start; padding: 20px 0; border-bottom: 1px solid var(--rule); }
+.sys-icon { width: 40px; height: 40px; border: 1px solid var(--rule); border-radius: 10px; display: grid; place-items: center; color: var(--slate); background: #fff; }
+.sys-name { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; }
+.sys-name b { font-weight: 600; font-size: 14px; }
+.sys-name span { color: var(--slate); font-size: 12.5px; }
+.sys-does { padding-top: 2px; }
+.sys-does p { font-size: 13.5px; color: var(--ink-2, #3B4746); max-width: 560px; }
+.sys-does .sys-latest { font-size: 12.5px; color: var(--slate); margin-top: 6px; }
+.sys-does .link { display: inline-block; margin-top: 8px; font-size: 13px; }
+.sys-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--teal); padding-top: 4px; white-space: nowrap; }
+.sys-how { margin-top: 32px; }
+.sys-how h2 { font-size: 15px; font-weight: 600; }
+.sys-how ol { list-style: decimal; padding-left: 20px; margin-top: 10px; color: var(--ink-2, #3B4746); font-size: 13.5px; }
+.sys-how li { padding: 3px 0; }
+.sys-foot { margin-top: 28px; font-size: 12px; color: var(--faint); }
+@media (max-width: 900px) {
+  .sys { grid-template-columns: 40px 1fr; }
+  .sys-does { grid-column: 2; }
+  .sys-status { grid-column: 2; padding-top: 0; }
+}
