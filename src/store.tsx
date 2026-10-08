@@ -32,7 +32,7 @@ function load(): Persisted {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as Persisted;
-      if (p.state?.version === STATE_VERSION) return { state: p.state, ui: { ...defaultUi, ...p.ui, calendarOpen: false } };
+      if (p.state?.version === STATE_VERSION) return { state: p.state, ui: defaultUi }; // progress is kept; the app always opens on Patients
     }
   } catch {
     /* storage unavailable: start from the sample practice */
@@ -68,11 +68,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ state, ui }));
+      localStorage.setItem(KEY, JSON.stringify({ state }));
     } catch {
       /* ignore quota / private mode */
     }
-  }, [state, ui]);
+  }, [state]);
 
   const notify = useCallback((text: string, detail?: string) => {
     window.clearTimeout(timer.current);
