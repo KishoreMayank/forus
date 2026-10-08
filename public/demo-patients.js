@@ -1,4 +1,4 @@
-import {seed,processDue,act,slots,DAY} from './engine.js?v=3';
+import {seed,processDue,act,slots,DAY,attachBilling,cardEnding,PAY_METHODS} from './engine.js?v=5';
 
 // Additional fictional cases use the same workflow as the original demo.
 const samples=[
@@ -69,7 +69,7 @@ export function extendPatients(state){
  for(const c of state.cases){c.chartId??=originalCharts[c.id];applyPlan(c);}
  for(const [id,name,chartId,status] of samples){
   if(state.cases.some(c=>c.id===id))continue;
-  const c={...seed().cases[0],id,name,chartId,initials:name.split(' ').map(n=>n[0]).join(''),status:'eligible',attempts:0,wakeAt:null,messages:[],events:[],sources:[]};
+  const c={...seed().cases[0],billing:null,id,name,chartId,initials:name.split(' ').map(n=>n[0]).join(''),status:'eligible',attempts:0,wakeAt:null,messages:[],events:[],sources:[]};
   applyPlan(c);
   state.cases.push(c);
   processDue({...state,cases:[c]});
@@ -88,10 +88,13 @@ export function extendPatients(state){
  }
  // Fictional front-desk handoff example; independent of existing patient decisions.
  if(!state.cases.some(c=>c.id==='ella-cost')){
-  const c={...seed().cases[0],id:'ella-cost',name:'Ella Wilson',initials:'EW',chartId:1314,treatment:'Crown · tooth 19',note:'Dr. Lee · Oct 9: Crown recommended to restore tooth 19 after root canal treatment. An itemized estimate has not yet been confirmed.',status:'engaged',stage:'explained',appointment:null,wakeAt:null,attempts:0,consult:false,sources:[],contact:true,sourceStatus:'active',attention:{owner:'Front desk',reason:'Asked what it will cost',title:'Confirm the treatment estimate',detail:'Review the planned fees and insurance benefits, then explain the estimated patient share before scheduling.'},messages:[{id:'ella-cost-question',who:'patient',at:state.now-120000,text:'Before I book, how much will the crown cost after insurance?',sources:[],channel:'sms'},{id:'ella-cost-reply',who:'agent',at:state.now-60000,text:'The front desk needs to confirm your treatment estimate and insurance benefits. They can explain the estimated amount you would pay before you choose an appointment.',sources:[],channel:'sms'}],events:[{at:state.now-120000,title:'Patient asked about cost',detail:'Requested an estimate of the amount due after insurance.'},{at:state.now-60000,title:'Front desk review needed',detail:'Confirm fees, coverage, and the estimated patient share before scheduling.'}],threadRevision:1,channelRevision:1};
+  const c={...seed().cases[0],billing:null,id:'ella-cost',name:'Ella Wilson',initials:'EW',chartId:1314,treatment:'Crown · tooth 19',note:'Dr. Lee · Oct 9: Crown recommended to restore tooth 19 after root canal treatment. An itemized estimate has not yet been confirmed.',status:'engaged',stage:'explained',appointment:null,wakeAt:null,attempts:0,consult:false,sources:[],contact:true,sourceStatus:'active',attention:{owner:'Front desk',reason:'Asked what it will cost',title:'Confirm the treatment estimate',detail:'Review the planned fees and insurance benefits, then explain the estimated patient share before scheduling.'},messages:[{id:'ella-cost-question',who:'patient',at:state.now-120000,text:'Before I book, how much will the crown cost after insurance?',sources:[],channel:'sms'},{id:'ella-cost-reply',who:'agent',at:state.now-60000,text:'The front desk needs to confirm your treatment estimate and insurance benefits. They can explain the estimated amount you would pay before you choose an appointment.',sources:[],channel:'sms'}],events:[{at:state.now-120000,title:'Patient asked about cost',detail:'Requested an estimate of the amount due after insurance.'},{at:state.now-60000,title:'Front desk review needed',detail:'Confirm fees, coverage, and the estimated patient share before scheduling.'}],threadRevision:1,channelRevision:1};
   state.cases.push(c);
  }
  for(const c of state.cases){
+  attachBilling(c);
+  // History: Grace paid her share at the completed bite-adjustment visit.
+  if(c.id==='grace'&&c.sourceStatus==='completed'&&!c.billing.payments.length&&c.appointment)c.billing.payments.push({id:'grace-pay1',at:c.appointment.start+c.appointment.duration*60000,amount:c.billing.share,method:`${PAY_METHODS.card} · Visa ending ${cardEnding(c)}`,receipt:`R-${c.chartId}-1`});
   populateThread(c);
   if(c.outreach)c.outreach=c.outreach.replace('this is Cedar Dental’s automated care coordinator','I’m Clara, Cedar Dental’s AI assistant');
   for(const m of c.messages)if(m.who==='agent')m.text=m.text.replace('this is Cedar Dental’s automated care coordinator','I’m Clara, Cedar Dental’s AI assistant');

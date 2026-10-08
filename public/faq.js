@@ -1,7 +1,7 @@
 import {costInsuranceEntries} from './cost-insurance.js';
 import {treatmentTopics,treatmentEntries,chartExamples,treatmentDescriptions} from './treatment-knowledge.js';
-import {seed} from './engine.js?v=3';
-import {extendPatients} from './demo-patients.js?v=5';
+import {seed} from './engine.js?v=5';
+import {extendPatients} from './demo-patients.js?v=9';
 const key='cedar-knowledge-v2';
 const oldKey='cedar-practice-faq-v1';
 const host=document.querySelector('.faq-list');

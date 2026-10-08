@@ -16,14 +16,14 @@ Open **http://localhost:4173/**. `npm run dev` starts the same server. Requires 
 npm test
 ```
 
-Requires Node.js 20+. The workflow tests cover scheduling, pauses, completion, contact preferences, and duplicate booking protection.
+Requires Node.js 20+. The workflow tests cover scheduling, pauses, completion, contact preferences, duplicate booking protection, and payments.
 
 ## Files
 
 - `public/index.html`: Patients, the main entry point.
 - `public/knowledge.html`: practice knowledge and answer editing.
 - `public/integrations.html`: integration overview and source viewers.
-- `public/engine.js`: shared demo state and workflow logic.
+- `public/engine.js`: shared demo state and workflow logic. Includes fictional insurance estimates and the `pay` action: a booked treatment visit can take its patient share once (card on file or card reader at the front desk). Payments show on the patient, as a Paid tag in the list, and under Integrations → Insurance & billing. No card is charged.
 - Other files in `public/`: styles, page logic, calendar, sample records, and reminder previews.
 - `tests/`: workflow tests.
 - `vercel.json`: static hosting configuration. Only `public/` is served.

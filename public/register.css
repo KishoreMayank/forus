@@ -455,3 +455,37 @@ body:has(.mobile-patient-dialog[open]){overflow:hidden}
  .register-layout .status-group .row-progress>.patient-status-line{font-size:12px}
  .register-layout .status-group .attention-owner{font-size:10px}
 }
+
+/* Insurance & billing: payment status, take-payment flow, live ledger. */
+.paid-tag{display:inline-flex;align-items:center;flex-shrink:0;padding:2px 7px;border-radius:999px;background:#e8f2ea;color:#3f6b4c;font-size:10px;font-weight:600;line-height:1.5}
+.billing-panel .facts{margin-top:12px}
+.billing-panel .pay-button{margin-top:14px;width:100%;min-height:40px;font-size:12px}
+.billing-paid{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px;font-size:11px;color:#5d7363;line-height:1.6}
+.billing-note{margin-top:12px;font-size:11px;color:#8a998e}
+.booking-summary{align-items:center}
+.booking-summary .booking-pay{margin-left:auto;flex-shrink:0;font-size:11px}
+.booking-summary>.paid-tag{margin-left:auto}
+.pay-methods{border:0;padding:0;margin:0 0 10px;display:grid;gap:8px}
+.pay-methods legend{font-size:11px;color:#7c8d80;margin-bottom:8px}
+.pay-methods label{display:flex;align-items:center;gap:11px;padding:11px 12px;border:1px solid #dfe7e1;border-radius:8px;cursor:pointer;font-size:12px;color:#33493a}
+.pay-methods label:has(input:checked){border-color:#6b9277;background:#f3f8f4}
+.pay-methods input{accent-color:#3c684c;margin:0}
+.pay-methods small{display:block;font-size:10px;color:#8a998e;margin-top:2px}
+dialog p.pay-fine{font-size:10px;margin:4px 0 18px}
+.billing-live{margin:16px 0 4px;padding:12px 14px;border-radius:8px;background:#f5f9f6;font-size:11px;color:#5d7363;line-height:1.7}
+.billing-live strong{color:#2f4637;font-weight:600}
+.billing-live p+p{color:#7c8d80}
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4f8a62;margin-right:8px;vertical-align:1px}
+.payment-list{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.payment-list li{display:flex;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid #e3eae5;border-radius:8px;font-size:11px;color:#5d7363}
+.payment-list li>div{display:grid;gap:3px}
+.payment-list li>div+div{text-align:right}
+.payment-list strong{font-size:13px;color:#2f4637}
+.payment-list small{font-size:10px;color:#8a998e}
+@media(max-width:480px){.booking-summary .booking-pay{margin:10px 0 0;width:100%}}
+.register-layout .billing-panel .source-facts{margin:12px 0 0;gap:12px}
+.register-layout .billing-panel .facts>div{font-size:12px;gap:20px;align-items:baseline}
+.register-layout .billing-panel dt{color:#74817e;flex-shrink:0}
+.register-layout .billing-panel dd{color:#33463b}
+@media(max-width:480px){.register-layout .billing-panel .facts>div{font-size:11px;gap:14px}}
+.mobile-patient-dialog .billing-panel .facts>div{font-size:12px}

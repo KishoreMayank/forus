@@ -9,6 +9,26 @@ export const knowledge = [
 export const fmtDate = t => new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',timeZone:'UTC'}).format(t);
 export const fmtFull = t => new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}).format(t);
 export const fmtTime = t => new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit',timeZone:'UTC'}).format(t);
+// Insurance & billing (fictional plans and fees). Patient share = fee − insurance estimate.
+const BILLING={
+ maya:[1250,750,'Harbor Mutual PPO'],jordan:[1250,750,'Harbor Mutual PPO'],alex:[1250,625,'Northline Dental'],
+ priya:[210,168,'Harbor Mutual PPO'],daniel:[880,616,'Bayside Benefits'],olivia:[1100,880,'Northline Dental'],
+ marcus:[320,256,'Bayside Benefits'],sofia:[1250,750,'Harbor Mutual PPO'],ethan:[210,0,'Self-pay'],
+ nora:[180,144,'Northline Dental'],grace:[95,76,'Bayside Benefits'],ben:[450,0,'Self-pay'],'ella-cost':[1250,700,'Bayside Benefits']
+};
+export const PAY_METHODS={card:'Card on file',desk:'Card reader at front desk'};
+export const money=n=>`$${Number(n).toLocaleString('en-US')}`;
+export function attachBilling(c){
+ if(c.billing)return c;
+ const [fee,insurance,plan]=BILLING[c.id]||[1250,750,'Harbor Mutual PPO'];
+ c.billing={plan,fee,insurance,share:fee-insurance,payments:[]};
+ return c;
+}
+export const cardEnding=c=>String(4200+(c.chartId||0)%100).padStart(4,'0');
+export const paid=c=>(c.billing?.payments||[]).reduce((t,p)=>t+p.amount,0);
+export const balance=c=>c.billing?Math.max(0,c.billing.share-paid(c)):0;
+export const canTakePayment=c=>!!(c.billing&&c.appointment&&c.appointment.kind==='Treatment'&&balance(c)>0);
+export function ledger(s){return s.cases.flatMap(c=>(c.billing?.payments||[]).map(p=>({...p,caseId:c.id,name:c.name,treatment:c.treatment}))).sort((a,b)=>(b.at-a.at)||((b.seq||0)-(a.seq||0)));}
 export function event(s,c,title,detail){ c.events.push({id:`${c.id}-${c.events.length}`,at:s.now,title,detail}); }
 function say(s,c,text,who='agent',sources=[]){c.messages.push({id:`${c.id}-m${c.messages.length}`,at:s.now,who,text,sources});}
 function patient(s,c,text){say(s,c,text,'patient');}
@@ -17,7 +37,7 @@ export function seed(){const s={version:VERSION,now:START,selected:'maya',view:'
  base('maya','Maya Chen','MC','lilac','Treatment understanding','Dr. Lee · Oct 9: Tooth 30 has a recorded crack. A crown was recommended to protect and support the remaining tooth.'),
  base('jordan','Jordan Ellis','JE','blue','Scheduling','Dr. Lee · Oct 9: Tooth 30 has a recorded crack. A crown was recommended to protect and support the remaining tooth. Patient asked for help finding a time.'),
  base('alex','Alex Morgan','AM','peach','Treatment understanding','Dr. Lee · Oct 9: Crown recommended for tooth 30. The synced note does not include the patient-specific rationale.')
-]};processDue(s);return s;}
+]};s.cases.forEach(attachBilling);processDue(s);return s;}
 export function processDue(s){for(const c of s.cases){
  if(!c.contact||c.sourceStatus==='completed'||c.appointment||['declined','closed'].includes(c.status))continue;
  if(c.status==='eligible'){say(s,c,c.outreach||`Hi ${c.name.split(' ')[0]}, I’m Clara, Cedar Dental’s AI assistant. You have a crown recommendation from Dr. Lee that hasn’t been scheduled. I can help you understand the recommendation or find a time. What would be helpful?`);c.status='waiting';c.attempts=1;c.wakeAt=s.now+3*DAY;event(s,c,'Follow-up started','Current plan and contact preferences checked. Initial message sent automatically.');}
@@ -35,6 +55,15 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
   if(!c.appointment||c.appointment.kind!=='Treatment')return {ok:false,message:'A treatment appointment is required.'};
   s.now=Math.max(s.now,c.appointment.start+c.appointment.duration*60000);c.sourceStatus='completed';c.status='completed';c.stage='done';c.wakeAt=null;
   event(s,c,'Treatment confirmed complete','The simulated practice record confirms treatment completion. Pending follow-up removed.');return {ok:true,message:'Practice record updated. Treatment complete.'};
+ }
+ if(type==='pay'){
+  if(!c.billing||!c.appointment||c.appointment.kind!=='Treatment')return {ok:false,message:'Payment is taken for a booked treatment visit.'};
+  const due=balance(c);if(due<=0)return {ok:false,message:'Already paid. No balance due.'};
+  const method=payload==='desk'?`${PAY_METHODS.desk}`:`${PAY_METHODS.card} · Visa ending ${cardEnding(c)}`;
+  const n=c.billing.payments.length;
+  s.paySeq=(s.paySeq||0)+1;c.billing.payments.push({id:`${c.id}-pay${n+1}`,at:s.now,seq:s.paySeq,amount:due,method,receipt:`R-${c.chartId||c.id}-${n+1}`});
+  event(s,c,'Payment received',`${money(due)} patient share · ${method}. Insurance estimate of ${money(c.billing.insurance)} billed to ${c.billing.plan}. Treatment completion still comes from treatment history.`);
+  return {ok:true,message:`${money(due)} received from ${c.name}. Billing updated in Integrations.`};
  }
  if(type==='cancel'){
   if(!c.appointment||c.sourceStatus==='completed')return {ok:false,message:'No active appointment to cancel.'};

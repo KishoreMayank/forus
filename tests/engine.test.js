@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seed,act,slots,advance,processDue,DAY} from '../public/engine.js';
+import {seed,act,slots,advance,processDue,DAY,balance,ledger} from '../public/engine.js';
 const patient=s=>s.cases[0];
 const book=(s,id='maya')=>{act(s,id,'slots');return act(s,id,'book',slots(s,s.cases.find(c=>c.id===id))[0].id);};
 test('initial outreach runs once without approval',()=>{const s=seed();processDue(s);assert.equal(patient(s).messages.length,1);assert.equal(patient(s).attempts,1);});
@@ -15,3 +15,6 @@ test('failed reschedule preserves original booking',()=>{const s=seed(),c=patien
 test('shared calendar prevents conflicting appointment selection',()=>{const s=seed();book(s);assert.ok(!slots(s,s.cases[1]).some(x=>x.id===patient(s).appointment.id));});
 test('serialized state preserves active case and scheduled work',()=>{const s=seed();act(s,'maya','pause');const restored=JSON.parse(JSON.stringify(s));assert.equal(restored.selected,'maya');assert.deepEqual(restored,s);});
 test('slots stay on weekdays and in future',()=>{const s=seed();s.now=Date.UTC(2026,9,16,16);for(const slot of slots(s,patient(s))){assert.ok(slot.start>s.now);assert.ok(![0,6].includes(new Date(slot.start).getUTCDay()));}});
+test('payment is taken once for a booked treatment visit and does not complete treatment',()=>{const s=seed(),c=patient(s);assert.equal(act(s,c.id,'pay','card').ok,false);book(s);assert.equal(balance(c),500);const r=act(s,c.id,'pay','card');assert.ok(r.ok);assert.equal(balance(c),0);assert.equal(ledger(s)[0].amount,500);assert.equal(act(s,c.id,'pay','card').ok,false);assert.equal(c.billing.payments.length,1);assert.equal(c.sourceStatus,'active');assert.equal(c.events.at(-1).title,'Payment received');});
+test('ledger lists the most recent payment first when the clock has not moved',()=>{const s=seed();for(const id of ['maya','jordan']){act(s,id,'slots');act(s,id,'book',slots(s,s.cases.find(c=>c.id===id))[0].id);}act(s,'jordan','pay','card');act(s,'maya','pay','desk');assert.equal(ledger(s)[0].caseId,'maya');});
+test('every demo patient gets its own fictional estimate',async()=>{const {extendPatients}=await import('../public/demo-patients.js');const s=extendPatients(seed());const by=id=>s.cases.find(c=>c.id===id).billing;assert.equal(by('priya').share,42);assert.equal(by('ethan').plan,'Self-pay');assert.equal(by('grace').payments[0].amount,19);assert.notEqual(by('priya'),by('maya'));});
