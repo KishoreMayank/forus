@@ -130,7 +130,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  else if(a==='book')perform('book',chosen);
  else if(a==='advance'){chosen=null;notify(advance(state));render();}
  else if(a==='complete')perform('complete');
- else if(['reset','cancel','stop','pay'].includes(a))confirm(a);
+ else if(a==='reset'){if(mobilePatient.open)mobilePatient.close();state=initialState();query='';filter='all';tab='overview';chosen=null;render();document.querySelector('.demo-reset-inline')?.focus({preventScroll:true});notify('Demo reset. Ready for a new walkthrough.');}
+ else if(['cancel','stop','pay'].includes(a))confirm(a);
  else if(a==='charge')charge(b);
  else if(a==='dismiss')dialog.close();
  else if(a==='confirm'){dialog.close();if(pending==='reset'){if(mobilePatient.open)mobilePatient.close();state=initialState();query='';filter='all';tab='overview';chosen=null;render();document.querySelector('.demo-reset')?.focus({preventScroll:true});notify('Demo reset. Ready for a new walkthrough.');}else perform(pending);}
