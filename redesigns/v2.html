@@ -155,7 +155,9 @@
   .count-line { margin-top: 22px; font-size: 13px; color: var(--slate); display: flex; align-items: center; gap: 4px; }
   .toolbar { display: flex; gap: 10px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
   .toolbar .filters { margin-top: 0; }
-  .search { flex: 1; min-width: 140px; max-width: 220px; margin-left: auto; }
+  .search { display: block; margin-top: 12px; }
+  .search input { width: 100%; font: inherit; font-size: 15px; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 10px; background: #fff; color: var(--ink); }
+  .search input:focus { outline: 2px solid var(--teal-wash); border-color: var(--teal); }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .toolbar input, .toolbar select { width: 100%; font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 9px; background: #fff; color: var(--ink); }
   .toolbar select { width: 190px; }
@@ -192,6 +194,35 @@
   .act span { color: var(--slate); font-size: 12.5px; }
   .next-line { margin-top: 12px; padding: 8px 0 8px 12px; border-left: 2px solid var(--teal); font-size: 13.5px; color: var(--slate); }
   .next-line b { color: var(--ink); font-weight: 600; }
+
+  /* Comfortable reading sizes */
+  body { font-size: 15px; }
+  .count-line { font-size: 14px; }
+  .filters button { font-size: 14px; padding: 6px 14px; }
+  .queue-h .grp { font-size: 15px; }
+  .queue-h .cnt { font-size: 14px; }
+  .q { padding: 16px 16px 16px 18px; }
+  .q .name { font-size: 16px; }
+  .q .tx { font-size: 14px; }
+  .q .track { font-size: 15px; }
+  .q .track .flag { font-size: 12px; }
+  .panel-head h3 { font-size: 20px; }
+  .p-tx { font-size: 14px; }
+  .p-tabs button { font-size: 14.5px; }
+  .p-sec h4 { font-size: 15px; }
+  .quote { font-size: 15px; }
+  .src-line { font-size: 13px; }
+  .kvr { font-size: 14.5px; }
+  .act li { font-size: 14.5px; }
+  .act time, .act span { font-size: 13px; }
+  .next-line { font-size: 14.5px; }
+  .bb { font-size: 15px; }
+  .bt, .day-sep { font-size: 12px; }
+  .draft-cap { font-size: 12px; }
+  .thread-bar { font-size: 13px; }
+  .tile b { font-size: 15px; }
+  .tile small, .tile-foot { font-size: 13px; }
+  .src { font-size: 14px; }
   .p-tabs { display: flex; gap: 2px; padding: 8px 14px 0; border-bottom: 1px solid var(--rule); }
   .p-tabs button { padding: 7px 10px; font-size: 13px; font-weight: 500; color: var(--slate); border-bottom: 2px solid transparent; margin-bottom: -1px; }
   .p-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--teal); }
@@ -435,6 +466,7 @@
       <div class="pt-layout" id="ptLayout">
         <div class="pt-list">
           <div class="count-line"><span data-count="all"></span> patients · from charts, last 90 days <span class="mk">2</span></div>
+          <label class="search"><span class="sr">Search patients</span><input id="ptSearch" type="search" placeholder="Search patients" /></label>
           <div class="toolbar">
             <div class="filters" role="tablist" aria-label="Filter by status">
               <button role="tab" data-filter="all" aria-selected="true">All <span class="cnt" data-count="all"></span></button>
@@ -442,7 +474,6 @@
               <button role="tab" data-filter="progress" aria-selected="false">In progress <span class="cnt" data-count="progress"></span></button>
               <button role="tab" data-filter="booked" aria-selected="false">Booked <span class="cnt" data-count="booked"></span></button>
             </div>
-            <label class="search"><span class="sr">Search patients</span><input id="ptSearch" type="search" placeholder="Search" /></label>
           </div>
           <div class="queue" data-group="attention">
             <div class="queue-h"><span class="grp"><i class="gdot attn"></i>Needs attention <span class="mk">3</span></span><span class="cnt" data-count="attention"></span></div>
