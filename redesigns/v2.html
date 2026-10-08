@@ -81,8 +81,7 @@
   .queue-h .cnt { color: var(--faint); margin-left: 6px; }
   #rows-booked .q .name { color: var(--slate); }
   .queue-h { display: flex; align-items: baseline; justify-content: space-between; font-size: 12.5px; color: var(--faint); padding: 0 4px 8px; border-bottom: 1px solid var(--rule); }
-  .q .heard, .q .nx, .colh .hide-p { display: none; }
-  .q, .colh { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px; align-items: center; width: 100%; text-align: left; }
+  .q, .colh { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 1fr); gap: 20px; align-items: center; width: 100%; text-align: left; }
   .q { padding: 12px 4px; border-bottom: 1px solid var(--rule); }
   .colh { padding: 18px 4px 0; font-size: 12px; color: var(--faint); }
   .colh span:last-child, .q .nx { text-align: right; }
@@ -550,7 +549,7 @@
     <li><span class="mk">1</span><span><b>Connections in one line.</b> <span class="t">&ldquo;Synced 9:04 AM&rdquo; is all staff need. Clicking it lists the four sources and what each is used for. A failed sync would turn this amber.</span></span></li>
     <li><span class="mk">2</span><span><b>Where the list comes from, in one line.</b> <span class="t">Every patient here has treatment in their chart and nothing booked. There are only two states: in progress or booked. No progress bar, because nobody knows in advance how many steps a patient will take.</span></span></li>
     <li><span class="mk">3</span><span><b>Needs attention comes first.</b> <span class="t">These are the only patients waiting on a person, and the amber label says who: the front desk, or a named dentist. Everything below is handled automatically. The filters at the top narrow the list to one group.</span></span></li>
-    <li><span class="mk">4</span><span><b>Two facts per row: who, and their status in their own terms.</b> <span class="t">Status describes what the patient is doing (&ldquo;Choosing a time&rdquo;, &ldquo;Not replying&rdquo;). Last heard and Next appear at the top of the patient panel, one click away. When it opens, statuses align to the right so the list reads as a clean column. Booked patients sit last, with the calendar a click away.</span></span></li>
+    <li><span class="mk">4</span><span><b>Four facts per row, in the patient&rsquo;s terms.</b> <span class="t">Status describes what the patient is doing (&ldquo;Choosing a time&rdquo;, &ldquo;Not replying&rdquo;). &ldquo;Last heard from&rdquo; shows whether it&rsquo;s live or going cold. &ldquo;Next&rdquo; shows what happens without anyone stepping in. When a patient is open, the row shrinks to name and status, aligned right, and those details move into the panel. Booked patients sit last, with the calendar a click away.</span></span></li>
   </ol>
   <ol class="notes" data-for="knowledge" hidden>
     <li><span class="mk">7</span><span><b>FAQ and chart, side by side.</b> <span class="t">Pick a question and a real patient to see the reply that would go out, with each sentence tinted by its source. Staff can check a wording edit against a real case before saving it.</span></span></li>
