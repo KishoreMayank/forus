@@ -107,7 +107,7 @@ function syncMobilePatient(){
  const history=mobilePatient.querySelector('.message-history');if(history)history.scrollTop=history.scrollHeight;
 }
 const dialog=document.createElement('dialog');dialog.setAttribute('aria-labelledby','dialog-title');document.body.append(dialog);
-function confirm(action){pending=action;if(action==='pay')return confirmPayment();const text={reset:['Reset demo?','Restore all sample patients and the practice clock.'],cancel:['Cancel appointment?','Release this appointment and reopen scheduling follow-up.'],stop:['Stop messages?','Stop future outreach. Any existing appointment remains booked.']}[action];dialog.innerHTML=`<h2 id="dialog-title">${text[0]}</h2><p>${text[1]}</p><div>${button('Go back','dismiss')}${button('Confirm','confirm','data-primary="true"')}</div>`;dialog.showModal();}
+function confirm(action){pending=action;if(action==='pay')return confirmPayment();const text={reset:['Restart the demo?','Restore the starting patients, conversations, bookings, payments, and practice clock in this browser. Your Knowledge edits will stay.'],cancel:['Cancel appointment?','Release this appointment and reopen scheduling follow-up.'],stop:['Stop messages?','Stop future outreach. Any existing appointment remains booked.']}[action];dialog.innerHTML=`<h2 id="dialog-title">${text[0]}</h2><p>${text[1]}</p><div>${button('Go back','dismiss')}${button(action==='reset'?'Reset demo':'Confirm','confirm','data-primary="true"')}</div>`;dialog.showModal();}
 function confirmPayment(){
  const c=current();if(!canTakePayment(c)){notify('Already paid. No balance due.');return;}
  const b=c.billing,due=balance(c);
@@ -133,7 +133,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  else if(['reset','cancel','stop','pay'].includes(a))confirm(a);
  else if(a==='charge')charge(b);
  else if(a==='dismiss')dialog.close();
- else if(a==='confirm'){dialog.close();if(pending==='reset'){state=initialState();query='';filter='all';tab='overview';chosen=null;render();notify('Demo reset. Initial follow-up sent.');}else perform(pending);}
+ else if(a==='confirm'){dialog.close();if(pending==='reset'){if(mobilePatient.open)mobilePatient.close();state=initialState();query='';filter='all';tab='overview';chosen=null;render();document.querySelector('.demo-reset')?.focus({preventScroll:true});notify('Demo reset. Ready for a new walkthrough.');}else perform(pending);}
  else if(a==='clear'){query='';filter='all';render();}
 });
 document.addEventListener('input',e=>{if(e.target.id==='patient-search'){query=e.target.value;renderRows();}});

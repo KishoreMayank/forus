@@ -509,3 +509,9 @@ dialog p.pay-fine{font-size:10px;margin:4px 0 18px}
 .booking-payment-receipt{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
 .booking-payment-receipt small{font-size:10px;color:#7a8c80;line-height:1.5}
 @media(max-width:650px){.booking-payment-receipt{width:100%;align-items:flex-start;padding-top:8px}.pay-methods label{min-height:48px}}
+
+/* A quiet reset lives below product navigation, above workspace branding. */
+.demo-reset{position:absolute;left:16px;right:16px;bottom:84px;display:flex;align-items:center;gap:9px;min-height:40px;padding:9px 12px;border:0;border-radius:7px;background:transparent;color:#86968a;font:inherit;font-size:11px;text-align:left;cursor:pointer}
+.demo-reset svg{width:16px;height:16px;flex-shrink:0}
+.demo-reset:hover{background:#edf3ee;color:#486b55}
+@media(max-width:480px){.demo-reset{left:9px;right:9px;bottom:16px;min-height:44px;padding:12px;justify-content:center}.demo-reset span{display:none}}
