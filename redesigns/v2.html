@@ -77,6 +77,9 @@
   .stg.after::after { background: var(--wash); }
 
   .queue { margin-top: 26px; }
+  .queue-h .grp { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); display: inline-flex; align-items: center; }
+  .queue-h .cnt { color: var(--faint); margin-left: 6px; }
+  #brows .q .name { color: var(--slate); }
   .queue-h { display: flex; align-items: baseline; justify-content: space-between; font-size: 12.5px; color: var(--faint); padding: 0 4px 8px; border-bottom: 1px solid var(--rule); }
   .q { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; align-items: center; width: 100%; text-align: left; padding: 14px 4px; border-bottom: 1px solid var(--rule); }
   .q:hover { background: var(--wash); }
@@ -209,11 +212,17 @@
   .never { margin-top: 26px; padding: 14px 16px; background: var(--wash); border-radius: 10px; }
   .never ul { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 24px; font-size: 13.5px; }
   .never li::before { content: '—'; color: var(--faint); margin-right: 8px; }
-  .ig-cal { grid-column: 1 / -1; margin-top: 6px; padding-top: 16px; border-top: 1px dashed var(--rule); }
+  .modal { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); width: min(980px, calc(100% - 32px)); background: var(--paper); border-radius: 12px; box-shadow: 0 24px 64px rgba(20,32,31,.22); z-index: 21; padding: 16px 22px 20px; }
+  .modal[hidden] { display: none; }
+  #calScrim { inset: 0; z-index: 20; }
+  .modal-head { display: flex; align-items: center; margin-bottom: 6px; }
+  .modal-k { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
+  .modal-head .x { margin-left: auto; font-size: 20px; color: var(--slate); width: 28px; height: 28px; border-radius: 6px; }
+  .modal-head .x:hover { background: var(--wash); }
   .ig-cal-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .ig-cal-head h3 { font-size: 15px; font-weight: 600; }
+  .ig-cal-head h3 { font-size: 17px; font-weight: 600; }
   .ig-cal-head .sub { color: var(--slate); font-size: 13px; }
-  .ig-cal .cal { margin-top: 12px; }
+  .modal .cal { margin-top: 12px; }
   .ig-st .link { font-size: 12.5px; }
   .pop-foot { border-top: 1px solid var(--rule); margin-top: 4px; display: block !important; padding: 10px 10px 6px !important; }
 
@@ -251,7 +260,7 @@
 <header class="doc">
   <div>
     <h1>Treatment follow-up · v2</h1>
-    <p>Queue shows progress by stage. Booked patients move to the calendar. FAQs live as files, and each patient&rsquo;s conversation shows which sentences came from their chart and which from an FAQ. Click around: the rows, the tabs, and the sync line all work.</p>
+    <p>Patients shows progress by stage, grouped into in progress and booked. FAQs live as files. Each conversation shows which sentences came from the chart and which from an FAQ. The appointment book opens from Integrations or the Booked group. Everything is clickable.</p>
   </div>
   <label><input type="checkbox" id="notesToggle" checked /> Show notes</label>
 </header>
@@ -261,7 +270,7 @@
     <div class="bar">
       <span class="practice">Harbor Dental<span>/</span>Follow-up</span>
       <nav class="nav">
-        <button data-view="queue" aria-current="page">Queue</button>
+        <button data-view="queue" aria-current="page">Patients</button>
         <button data-view="knowledge">Knowledge</button>
         <button data-view="integrations">Integrations</button>
       </nav>
@@ -280,8 +289,8 @@
     <!-- QUEUE -->
     <section class="view" id="v-queue">
       <div class="view-head">
-        <h2>Queue</h2>
-        <span class="sub">Treatment plans from the last 90 days with nothing booked</span>
+        <h2>Patients</h2>
+        <span class="sub">Unscheduled treatment plans from the last 90 days</span>
       </div>
 
       <div class="stages" aria-label="Progress by stage">
@@ -293,9 +302,12 @@
       </div>
 
       <div class="queue">
-        <div class="queue-h"><span>7 in the queue <span class="mk">3</span></span><span>Next step</span></div>
+        <div class="queue-h"><span class="grp">In progress <span class="cnt">7</span> <span class="mk">3</span></span><span>Next step</span></div>
         <div id="qrows"></div>
-        <div class="booked-line"><span><b>3 booked</b> this month, in the practice&rsquo;s appointment book <span class="mk">4</span></span><button class="link" id="openCal">Open appointment book →</button></div>
+      </div>
+      <div class="queue">
+        <div class="queue-h"><span class="grp">Booked <span class="cnt">3</span> <span class="mk">4</span></span><button class="link" data-open-cal>Open appointment book</button></div>
+        <div id="brows"></div>
       </div>
     </section>
 
@@ -345,29 +357,12 @@
             <div><p class="lbl">Reads</p><p>Treatment plans with no appointment · dentist notes · open times · completed procedures</p></div>
             <div><p class="lbl">Writes <span class="mk">10</span></p><p>Appointments patients choose · cancellations they ask for</p></div>
           </div>
-          <div class="ig-st"><span>Synced 9:04 AM</span><button class="btn">Sync now</button><button class="link" id="calToggle" aria-expanded="false" aria-controls="apptBook">View appointment book <span class="mk">13</span></button></div>
+          <div class="ig-st"><span>Synced 9:04 AM</span><button class="btn">Sync now</button><button class="link" id="calToggle">Open appointment book <span class="mk">13</span></button></div>
           <ol class="ig-log">
             <li><time>9:04</time>Found 2 new treatment plans (Nora Kim, Leo Brandt) <span class="mk">11</span></li>
             <li><time>9:04</time>Marked 1 crown seated (Grace Park). Follow-up closed</li>
             <li><time>8:49</time>No changes</li>
           </ol>
-          <div class="ig-cal" id="apptBook" hidden>
-            <div class="ig-cal-head">
-        <h3 id="weekLabel">12 – 16 Oct</h3>
-        <span class="sub">Dr. Shah &amp; Dr. Bell · read from the practice system</span>
-        <div class="cal-tools">
-          <div class="seg"><button id="fAll" aria-pressed="true">All appointments</button><button id="fOurs" aria-pressed="false">Booked by follow-up <span class="mk">14</span></button></div>
-          <button class="arrow" id="prevWk" aria-label="Previous week" disabled>‹</button>
-          <button class="arrow" id="nextWk" aria-label="Next week">›</button>
-        </div>
-      </div>
-            <div class="cal" id="cal"></div>
-      <div class="cal-legend">
-        <span><i style="background:var(--teal)"></i>Booked by a patient over text</span>
-        <span><i style="background:var(--amber-wash);border:1px solid #EAD6B8"></i>Discussion with a dentist</span>
-        <span><i style="background:#F0F2F3"></i>Other appointments</span>
-      </div>
-          </div>
         </li>
         <li class="ig-row">
           <div class="ig-id"><span class="dot"></span><div><b>Text messages</b><small>(555) 010-4400</small></div></div>
@@ -397,6 +392,30 @@
       </div>
     </section>
 
+    <!-- APPOINTMENT BOOK (opens on demand) -->
+    <div class="scrim" id="calScrim" hidden></div>
+    <div class="modal" id="apptBook" role="dialog" aria-modal="true" aria-labelledby="weekLabel" hidden>
+      <div class="modal-head">
+        <div><div class="modal-k">Appointment book · practice management system</div></div>
+        <button class="x" id="calClose" aria-label="Close appointment book">×</button>
+      </div>
+            <div class="ig-cal-head">
+        <h3 id="weekLabel">12 – 16 Oct</h3>
+        <span class="sub">Dr. Shah &amp; Dr. Bell · read from the practice system</span>
+        <div class="cal-tools">
+          <div class="seg"><button id="fAll" aria-pressed="true">All appointments</button><button id="fOurs" aria-pressed="false">Booked by follow-up <span class="mk">14</span></button></div>
+          <button class="arrow" id="prevWk" aria-label="Previous week" disabled>‹</button>
+          <button class="arrow" id="nextWk" aria-label="Next week">›</button>
+        </div>
+      </div>
+            <div class="cal" id="cal"></div>
+      <div class="cal-legend">
+        <span><i style="background:var(--teal)"></i>Booked by a patient over text</span>
+        <span><i style="background:var(--amber-wash);border:1px solid #EAD6B8"></i>Discussion with a dentist</span>
+        <span><i style="background:#F0F2F3"></i>Other appointments</span>
+      </div>
+    </div>
+
     <!-- PATIENT PANEL -->
     <div class="scrim" id="scrim" hidden></div>
     <aside class="panel" id="panel" hidden aria-label="Patient">
@@ -417,8 +436,8 @@
   <ol class="notes" data-for="queue">
     <li><span class="mk">1</span><span><b>Connections in one line.</b> <span class="t">&ldquo;Synced 9:04 AM&rdquo; is all staff need. Clicking it lists the four sources and what each is used for. A failed sync would turn this amber.</span></span></li>
     <li><span class="mk">2</span><span><b>Stages are the headline.</b> <span class="t">Five numbers show progress at a glance, starting with the chart. Booked and Completed are greyed because that&rsquo;s the practice&rsquo;s usual workflow, not the queue&rsquo;s.</span></span></li>
-    <li><span class="mk">3</span><span><b>Four facts per row.</b> <span class="t">Who, what treatment, which stage, and what happens next. Everything else is one click away in the patient panel.</span></span></li>
-    <li><span class="mk">4</span><span><b>Booked patients leave the queue.</b> <span class="t">Once someone is booked they&rsquo;re summarised in one line that links to the appointment book, under Integrations.</span></span></li>
+    <li><span class="mk">3</span><span><b>In progress comes first, four facts per row.</b> <span class="t">Who, what treatment, which stage, and what happens next. These are the patients the tool is still working on. Everything else is one click away in the patient panel.</span></span></li>
+    <li><span class="mk">4</span><span><b>Booked sits below, quieter.</b> <span class="t">Same row shape, greyed names. Once someone is booked the only remaining step is a reminder. The appointment book opens from here when you need it.</span></span></li>
   </ol>
   <ol class="notes" data-for="knowledge" hidden>
     <li><span class="mk">7</span><span><b>FAQ and chart, side by side.</b> <span class="t">Pick a question and a real patient to see the reply that would go out, with each sentence tinted by its source. Staff can check a wording edit against a real case before saving it.</span></span></li>
@@ -429,7 +448,7 @@
     <li><span class="mk">10</span><span><b>Reads and writes, side by side.</b> <span class="t">The writes column is short on purpose. It&rsquo;s the part an owner checks before signing off: the tool only ever writes the appointments patients choose.</span></span></li>
     <li><span class="mk">11</span><span><b>A sync log in plain words.</b> <span class="t">&ldquo;Found 2 new treatment plans&rdquo; ties the connection to the Queue&rsquo;s &ldquo;Found in charts&rdquo; count, so staff can see where new patients came from.</span></span></li>
     <li><span class="mk">12</span><span><b>Each missing integration says what it would unlock.</b> <span class="t">Insurance is linked to the costs.md draft, which explains why that FAQ isn&rsquo;t live yet. Phone calls are marked planned, not offered.</span></span></li>
-    <li><span class="mk">13</span><span><b>The calendar lives under the practice system.</b> <span class="t">It isn&rsquo;t a separate tool. It&rsquo;s a read-only view of the appointment book this integration already reads.</span> <b>Only follow-up bookings are coloured.</b> <span class="t">The rest of the book is grey, with no patient names. The point is to see this tool&rsquo;s bookings land in the real schedule, not to replace the practice&rsquo;s calendar.</span></span></li>
+    <li><span class="mk">13</span><span><b>The appointment book opens on demand.</b> <span class="t">It&rsquo;s a read-only view of the practice system&rsquo;s book, opened from here or from the Booked group, and closed when you&rsquo;re done.</span> <b>Only follow-up bookings are coloured.</b> <span class="t">The rest of the book is grey, with no patient names. The point is to see this tool&rsquo;s bookings land in the real schedule, not to replace the practice&rsquo;s calendar.</span></span></li>
     <li><span class="mk">14</span><span><b>One filter, nothing else.</b> <span class="t">&ldquo;Booked by follow-up&rdquo; fades the rest of the book. A &ldquo;New&rdquo; tag marks bookings made since you last looked, so a busy desk notices them without a notification.</span></span></li>
   </ol>
 </div>
@@ -447,9 +466,15 @@ const patients = {
   leo:    { name: 'Leo Brandt', tooth: '#15', dr: 'Dr. Shah', date: '30 Sep', stage: 0, stageText: 'Found this morning', next: 'Tue 13 Oct', nextText: 'first text' },
 };
 const order = ['nora', 'leo', 'daniel', 'james', 'maya', 'elena', 'aisha'];
+Object.assign(patients, {
+  robert: { name: 'Robert Lindqvist', tooth: '#14', dr: 'Dr. Shah', date: '18 Sep', stage: 3, stageText: 'Booked Thu 15 Oct, 1:30', next: 'Wed 14 Oct', nextText: 'reminder' },
+  sam:    { name: 'Sam Patel', tooth: '#4', dr: 'Dr. Shah', date: '22 Sep', stage: 3, stageText: 'Booked Fri 16 Oct, 10:00', next: 'Thu 15 Oct', nextText: 'reminder' },
+  hana:   { name: 'Hana Sato', tooth: '#13', dr: 'Dr. Bell', date: '25 Sep', stage: 3, stageText: 'Booked Tue 20 Oct, 8:00', next: 'Mon 19 Oct', nextText: 'reminder' },
+});
+const bookedOrder = ['robert', 'sam', 'hana'];
 
-const qrows = document.getElementById('qrows');
-qrows.innerHTML = order.map((id) => {
+const qrows = document.getElementById('qrows'), brows = document.getElementById('brows');
+const rowHtml = (id) => {
   const p = patients[id];
   const segs = STAGES.map((_, i) => `<i class="${i <= p.stage ? 'on' : ''}"></i>`).join('');
   return `<button class="q" data-p="${id}">
@@ -458,7 +483,9 @@ qrows.innerHTML = order.map((id) => {
     <span class="track"><span class="segs ${p.tone || ''}">${segs}</span>${p.stageText}</span>
     <span class="nx ${p.tone === 'amber' ? 'amber' : ''}"><b>${p.next}</b> · ${p.nextText}</span>
   </button>`;
-}).join('');
+};
+qrows.innerHTML = order.map(rowHtml).join('');
+brows.innerHTML = bookedOrder.map(rowHtml).join('');
 
 /* ── views ──────────────────────────────────────────── */
 function show(view) {
@@ -503,6 +530,16 @@ const convos = {
   },
 };
 function generic(p) {
+  if (p.stage === 3) return {
+    msgs: [
+      ['co', 'Earlier', `Hi ${p.name.split(' ')[0]}, this is Harbor Dental. ${C(`At your ${p.date} visit, ${p.dr} recommended a crown for tooth ${p.tooth}`)}. Would you like to book a time?`],
+      ['pt', 'Earlier', 'Yes please'],
+      ['co', 'Earlier', `You’re booked: ${p.stageText.replace('Booked ', '')} with ${p.dr}. ${F('Plan for about 90 minutes.')} I’ll send a reminder the day before.`],
+    ],
+    chart: { title: `Chart · ${p.dr} · ${p.date}`, text: `${p.tooth}: <mark>Recommend crown.</mark>`, foot: 'Treatment plan: D2740 Crown' },
+    faq: { title: 'scheduling.md › Crown preparation', text: '<mark>90 minutes with the treating dentist</mark>', foot: 'Scheduling rule' },
+    next: `<b>${p.next}</b><br>Send a reminder. Nothing else until the crown is charted as seated.`,
+  };
   return {
     msgs: [['co', p.stage === 0 ? 'Scheduled' : 'Mon 9:00', `Hi ${p.name.split(' ')[0]}, this is Harbor Dental. ${C(`At your ${p.date} visit, ${p.dr} recommended a crown for tooth ${p.tooth}`)}. We haven’t seen it on the schedule yet. Would you like to book a time, or do you have questions first?`]],
     chart: { title: `Chart · ${p.dr} · ${p.date}`, text: `${p.tooth}: <mark>Recommend crown.</mark>`, foot: 'Treatment plan: D2740 Crown' },
@@ -529,7 +566,7 @@ function openPanel(id) {
   panel.hidden = scrim.hidden = false;
 }
 function closePanel() { panel.hidden = scrim.hidden = true; }
-qrows.addEventListener('click', (e) => { const b = e.target.closest('.q'); if (b) openPanel(b.dataset.p); });
+[qrows, brows].forEach((el) => el.addEventListener('click', (e) => { const b = e.target.closest('.q'); if (b) openPanel(b.dataset.p); }));
 scrim.addEventListener('click', closePanel);
 document.getElementById('pClose').addEventListener('click', closePanel);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
@@ -576,14 +613,13 @@ function setFilter(ours) { fAll.setAttribute('aria-pressed', String(!ours)); fOu
 fAll.addEventListener('click', () => setFilter(false));
 fOurs.addEventListener('click', () => setFilter(true));
 
-const calToggle = document.getElementById('calToggle'), apptBook = document.getElementById('apptBook');
-function setCal(open) {
-  apptBook.hidden = !open;
-  calToggle.setAttribute('aria-expanded', String(open));
-  calToggle.firstChild.textContent = open ? 'Hide appointment book ' : 'View appointment book ';
-}
-calToggle.addEventListener('click', () => setCal(apptBook.hidden));
-document.getElementById('openCal').addEventListener('click', () => { show('integrations'); setCal(true); apptBook.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+const apptBook = document.getElementById('apptBook'), calScrim = document.getElementById('calScrim');
+function setCal(open) { apptBook.hidden = calScrim.hidden = !open; if (open) document.getElementById('calClose').focus(); }
+document.getElementById('calToggle').addEventListener('click', () => setCal(true));
+document.getElementById('calClose').addEventListener('click', () => setCal(false));
+calScrim.addEventListener('click', () => setCal(false));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setCal(false); });
+document.querySelectorAll('[data-open-cal]').forEach((b) => b.addEventListener('click', () => setCal(true)));
 
 /* ── knowledge ──────────────────────────────────────── */
 const H = (lvl, t, used, q) => `<span class="q ${q ? '' : ''}" ${q ? `data-q="${q}"` : ''}>${used ? `<span class="use">${used}</span>` : ''}<span class="h"><span class="hm">${'#'.repeat(lvl)} </span>${t}</span></span>`;
