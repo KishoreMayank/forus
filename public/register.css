@@ -505,3 +505,7 @@ dialog p.pay-fine{font-size:10px;margin:4px 0 18px}
 .data-integration .billing-live+.integration-row-footer{margin-top:0}
 .data-integration .data-integration-heading{flex-wrap:nowrap}
 .data-integration .data-integration-heading>div{flex:1;min-width:0}
+
+.booking-payment-receipt{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.booking-payment-receipt small{font-size:10px;color:#7a8c80;line-height:1.5}
+@media(max-width:650px){.booking-payment-receipt{width:100%;align-items:flex-start;padding-top:8px}.pay-methods label{min-height:48px}}

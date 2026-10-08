@@ -18,3 +18,16 @@ test('slots stay on weekdays and in future',()=>{const s=seed();s.now=Date.UTC(2
 test('payment is taken once for a booked treatment visit and does not complete treatment',()=>{const s=seed(),c=patient(s);assert.equal(act(s,c.id,'pay','card').ok,false);book(s);assert.equal(balance(c),500);const r=act(s,c.id,'pay','card');assert.ok(r.ok);assert.equal(balance(c),0);assert.equal(ledger(s)[0].amount,500);assert.equal(act(s,c.id,'pay','card').ok,false);assert.equal(c.billing.payments.length,1);assert.equal(c.sourceStatus,'active');assert.equal(c.events.at(-1).title,'Payment received');});
 test('ledger lists the most recent payment first when the clock has not moved',()=>{const s=seed();for(const id of ['maya','jordan']){act(s,id,'slots');act(s,id,'book',slots(s,s.cases.find(c=>c.id===id))[0].id);}act(s,'jordan','pay','card');act(s,'maya','pay','desk');assert.equal(ledger(s)[0].caseId,'maya');});
 test('every demo patient gets its own fictional estimate',async()=>{const {extendPatients}=await import('../public/demo-patients.js');const s=extendPatients(seed());const by=id=>s.cases.find(c=>c.id===id).billing;assert.equal(by('priya').share,42);assert.equal(by('ethan').plan,'Self-pay');assert.equal(by('grace').payments[0].amount,19);assert.notEqual(by('priya'),by('maya'));});
+
+test('demo explanation to booking to payment preserves receipt and clinical state',()=>{
+ const s=seed(),c=patient(s);assert.equal(c.status,'waiting');
+ assert.ok(act(s,c.id,'why').ok);assert.ok(book(s).ok);const appointment={...c.appointment};
+ assert.ok(act(s,c.id,'pay','card').ok);
+ assert.equal(c.status,'booked');assert.equal(c.sourceStatus,'active');assert.deepEqual(c.appointment,appointment);
+ assert.match(c.messages.at(-1).text,/received \$500/);assert.match(c.messages.at(-1).text,/balance is now \$0/);
+ assert.ok(c.messages.at(-1).text.includes(c.billing.payments[0].receipt));
+ const restored=JSON.parse(JSON.stringify(s));assert.equal(balance(patient(restored)),0);assert.equal(ledger(restored).length,1);
+ const count=c.messages.length;assert.equal(act(s,c.id,'pay','card').ok,false);assert.equal(c.messages.length,count);
+});
+test('payment does not send a receipt after a contact stop',()=>{const s=seed(),c=patient(s);book(s);act(s,c.id,'stop');const count=c.messages.length;assert.ok(act(s,c.id,'pay','desk').ok);assert.equal(c.messages.length,count);});
+test('discussion appointments cannot collect treatment payment',()=>{const s=seed(),c=patient(s);act(s,c.id,'consult');act(s,c.id,'book',slots(s,c)[0].id);assert.equal(act(s,c.id,'pay','card').ok,false);assert.equal(c.billing.payments.length,0);});

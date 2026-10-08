@@ -63,6 +63,7 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
   const n=c.billing.payments.length;
   s.paySeq=(s.paySeq||0)+1;c.billing.payments.push({id:`${c.id}-pay${n+1}`,at:s.now,seq:s.paySeq,amount:due,method,receipt:`R-${c.chartId||c.id}-${n+1}`});
   event(s,c,'Payment received',`${money(due)} patient share · ${method}. Insurance estimate of ${money(c.billing.insurance)} billed to ${c.billing.plan}. Treatment completion still comes from treatment history.`);
+  if(c.contact)say(s,c,`We’ve received ${money(due)} toward your ${c.treatment.toLowerCase()}. Your patient balance is now ${money(balance(c))}. Receipt ${c.billing.payments.at(-1).receipt}. Your appointment remains booked for ${fmtFull(c.appointment.start)} at ${fmtTime(c.appointment.start)}.`);
   return {ok:true,message:`${money(due)} received from ${c.name}. Billing updated in Integrations.`};
  }
  if(type==='cancel'){

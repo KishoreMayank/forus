@@ -1,4 +1,4 @@
-import {seed,processDue,act,slots,DAY,attachBilling,cardEnding,PAY_METHODS} from './engine.js?v=5';
+import {seed,processDue,act,slots,DAY,attachBilling,cardEnding,PAY_METHODS} from './engine.js?v=6';
 
 // Additional fictional cases use the same workflow as the original demo.
 const samples=[
