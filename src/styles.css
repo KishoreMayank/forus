@@ -471,3 +471,16 @@ button.ap:hover { filter: brightness(1.08); }
   .q .track { white-space: normal; }
 }
 .bb { white-space: pre-line; }
+.ig-detail .ig-log li { display: grid; grid-template-columns: 128px 1fr; gap: 10px; }
+.ig-detail .ig-log time { width: auto; white-space: nowrap; }
+@media (max-width: 900px) {
+  .q { grid-template-columns: minmax(0, 1fr) 14px !important; gap: 4px 10px; }
+  .q .who { grid-column: 1; }
+  .q .track { grid-column: 1; grid-row: 2; justify-self: start; text-align: left; white-space: normal; flex-wrap: wrap; }
+  .q .chev { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+  .pt-layout.has-panel .pt-list { display: none; }
+  .pt-layout.has-panel { grid-template-columns: 1fr; }
+  .panel { position: static; max-height: none; }
+  .ig-layout.has-panel { grid-template-columns: 1fr; }
+  .modal { left: 8px; right: 8px; width: auto; transform: none; }
+}

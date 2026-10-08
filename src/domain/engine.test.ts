@@ -159,3 +159,14 @@ describe('clarification: Elena', () => {
     expect(replyOptions(s, 'elena').map((o) => o.id)).toContain('proceed');
   });
 });
+
+describe('knowledge preview', () => {
+  it('composes the real reply for each kind of FAQ entry', async () => {
+    const { previewAnswer } = await import('./engine');
+    const s = initialState();
+    expect(previewAnswer(s, 'maya', 'why')!.parts.map((p) => p.src).filter(Boolean)).toEqual(['chart', 'faq']);
+    expect(textOf(previewAnswer(s, 'maya', 'q:alt')!.parts)).toContain('call with Dr. Shah');
+    expect(textOf(previewAnswer(s, 'maya', 'cost')!.parts)).toContain('front desk');
+    expect(textOf(previewAnswer(s, 'james', 'q:hurt')!.parts)).toContain('numbed');
+  });
+});
