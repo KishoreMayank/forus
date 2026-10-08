@@ -1,4 +1,4 @@
-import {seed,processDue,act,slots,DAY} from '../engine.js?v=3';
+import {seed,processDue,act,slots,DAY} from './engine.js?v=3';
 
 // Additional fictional cases use the same workflow as the original demo.
 const samples=[

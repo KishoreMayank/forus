@@ -1,7 +1,7 @@
 import {scheduledMessage,updateScheduledMessage} from './scheduled-message.js?v=1';
 import {setupSourceData} from './source-data.js?v=4';
 import {setupCalendar} from './calendar.js?v=4';
-import {seed,act,advance,slots,statusLabel,nextAction,fmtFull,fmtDate,fmtTime,VERSION,knowledge} from '../engine.js?v=3';
+import {seed,act,advance,slots,statusLabel,nextAction,fmtFull,fmtDate,fmtTime,VERSION,knowledge} from './engine.js?v=3';
 
 import {extendPatients} from './demo-patients.js?v=6';
 

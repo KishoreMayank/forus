@@ -3,12 +3,12 @@
   "framework": null,
   "buildCommand": "",
   "installCommand": "",
-  "outputDirectory": "dist",
+  "outputDirectory": "public",
   "redirects": [
     {
-      "source": "/",
-      "destination": "/redesigns/index.html",
-      "permanent": false
+      "source": "/redesigns/:path*",
+      "destination": "/:path*",
+      "permanent": true
     }
   ]
 }

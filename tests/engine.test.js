@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seed,act,slots,advance,processDue,DAY} from '../dist/engine.js';
+import {seed,act,slots,advance,processDue,DAY} from '../public/engine.js';
 const patient=s=>s.cases[0];
 const book=(s,id='maya')=>{act(s,id,'slots');return act(s,id,'book',slots(s,s.cases.find(c=>c.id===id))[0].id);};
 test('initial outreach runs once without approval',()=>{const s=seed();processDue(s);assert.equal(patient(s).messages.length,1);assert.equal(patient(s).attempts,1);});

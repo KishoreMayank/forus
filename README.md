@@ -1,14 +1,14 @@
 # Cedar — Patient follow-up workspace
 
-The active code is the Cedar prototype developed in Codex. It uses plain HTML, CSS, and JavaScript with fictional patient records and scripted conversations. State is stored locally in the browser; there is no live messaging, AI backend, or practice-system integration.
+The main app lives in `public/` and opens at the site root. It uses plain HTML, CSS, and JavaScript with fictional patient records and scripted conversations. Changes are stored in each browser; there is no live messaging, AI backend, or practice-system integration.
 
-## Run
+## Run locally
 
 ```sh
 npm start
 ```
 
-Open **http://localhost:4173/redesigns/index.html** for the current Patients, Knowledge, and Integrations interface. `npm run dev` runs the same server. Requires Python 3; no installation or build step is needed. If port 4173 is already occupied by the Codex preview, use `python3 -m http.server 4174 --directory dist` and open the same path on port 4174.
+Open **http://localhost:4173/**. `npm run dev` starts the same server. Requires Python 3; no installation or build step is needed. If port 4173 is busy, run `python3 -m http.server 4174 --directory public` and open http://localhost:4174/.
 
 ## Verify
 
@@ -16,17 +16,24 @@ Open **http://localhost:4173/redesigns/index.html** for the current Patients, Kn
 npm test
 ```
 
-Uses Node's built-in test runner. The 12 workflow tests cover scheduling, pauses, completion, contact preferences, and duplicate booking protection.
+Requires Node.js 20+. The workflow tests cover scheduling, pauses, completion, contact preferences, and duplicate booking protection.
 
-## Code
+## Files
 
-- `dist/redesigns/`: current interface, styles, knowledge content, calendar, source viewers, and scheduled reminder preview.
-- `dist/engine.js`: shared demo state and workflow logic.
-- `dist/index.html`, `dist/app.js`, `dist/style.css`: earlier Codex prototype, retained alongside the current interface.
+- `public/index.html`: Patients, the main entry point.
+- `public/knowledge.html`: practice knowledge and answer editing.
+- `public/integrations.html`: integration overview and source viewers.
+- `public/engine.js`: shared demo state and workflow logic.
+- Other files in `public/`: styles, page logic, calendar, sample records, and reminder previews.
 - `tests/`: workflow tests.
+- `vercel.json`: static hosting configuration. Only `public/` is served.
 
-## Previous app
+## Deployment
 
-**`reference/previous-app-2026-10-08/`** contains the React/Vite app that was previously at this repository's root, including its source, README, package files, configuration, and installed dependencies. Its original README documents how to run it. Work inside that folder when referring to the old version.
+Production: https://forus-lemon.vercel.app/
 
-The destination repository's `.git` history and `.claude` configuration remain at the root. The source Codex project's Git metadata was not copied. No commit or push was made during the transfer.
+Pushes to `main` deploy automatically through Vercel. Older `/redesigns/` links redirect to the current pages in production.
+
+## Previous version
+
+`reference/previous-app-2026-10-08/` preserves the prior React/Vite app, its source, README, package files, and configuration. It is excluded from deployment. Its README documents how to run it. The obsolete Codex prototype and layout studies were removed from the active tree and remain recoverable in Git history.

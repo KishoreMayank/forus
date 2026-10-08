@@ -1,4 +1,4 @@
-import {fmtFull,fmtTime} from '../engine.js?v=3';
+import {fmtFull,fmtTime} from './engine.js?v=3';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function setupSourceData(getState){
  if(!document.querySelector('[data-view-source]'))return;
