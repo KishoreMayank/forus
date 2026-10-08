@@ -170,7 +170,8 @@
   .q { grid-template-columns: minmax(0, 1fr) auto 14px !important; gap: 16px; padding: 14px 16px 14px 18px; border-left: 3px solid transparent; }
   .q .name { font-size: 15px; }
   .q .tx { font-size: 13px; }
-  .q .track { font-size: 13.5px; color: var(--slate); justify-self: end; text-align: right; }
+  .q .track { font-size: 13.5px; color: var(--ink); justify-self: end; text-align: right; display: flex; align-items: center; gap: 8px; }
+  .q .track .flag { margin-left: 0; }
   .q .chev { color: var(--faint); font-size: 18px; line-height: 1; }
   .q.sel { background: var(--teal-wash); border-left-color: var(--teal); }
   .q[hidden], .queue[hidden] { display: none; }
@@ -660,11 +661,12 @@ const PHRASE = {
   nora: 'First text today, 10:00', leo: 'First email Tue', aisha: 'Paused until 22 Oct',
   robert: 'Booked Thu 15 Oct, 1:30', sam: 'Booked Fri 16 Oct, 10:00', hana: 'Booked Tue 20 Oct, 8:00',
 };
-const rowHtml = (group) => ([id]) => {
+const rowHtml = (group) => ([id, status, flag]) => {
   const p = patients[id];
+  const dot = group === 'attention' ? 'amber' : group === 'booked' ? 'booked' : status.startsWith('Paused') ? 'paused' : status === 'Not contacted yet' ? 'new' : '';
   return `<button class="q" data-p="${id}" data-name="${p.name.toLowerCase()}">
     <span class="who"><span class="name">${p.name}</span><span class="tx">${p.tx} · ${p.dr}</span></span>
-    <span class="track">${PHRASE[id]}</span>
+    <span class="track"><span class="sdot ${dot}"></span><span>${status}</span>${flag ? `<span class="flag">${flag}</span>` : ''}</span>
     <span class="chev" aria-hidden="true">›</span>
   </button>`;
 };
