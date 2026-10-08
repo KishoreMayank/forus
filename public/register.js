@@ -123,7 +123,7 @@ function perform(type,value){
   const added=after.messages.slice(before.messages.length);
   if(result.ok&&added.some(m=>m.who==='agent')){
    thinking={id,after};before.messages.push(...added.filter(m=>m.who==='patient'));chosen=null;render();
-   thinkingTimer=setTimeout(()=>{const work=thinking;if(!work)return;thinking=null;thinkingTimer=null;const i=state.cases.findIndex(c=>c.id===work.id);if(i>=0)state.cases[i]=work.after;render();notify(result.message);},1200);
+   thinkingTimer=setTimeout(()=>{const work=thinking;if(!work)return;thinking=null;thinkingTimer=null;const i=state.cases.findIndex(c=>c.id===work.id);if(i>=0)state.cases[i]=work.after;render();notify(result.message);},2000);
    return;
   }
  }
