@@ -149,6 +149,47 @@
   .show-src .thread .src-faq { background: #DCE7F6; color: #1F4470; box-shadow: none; border-radius: 3px; padding: 0 2px; }
   .show-src .bub.out:not(.draft) .bb { background: #fff; color: var(--ink); border: 1px solid var(--rule); }
   .srcs summary { cursor: pointer; font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
+  /* Overview: one calm accent, one status phrase per row */
+  .page-head h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+  .page-head p { color: var(--slate); margin-top: 4px; font-size: 15px; }
+  .count-line { margin-top: 22px; font-size: 13px; color: var(--slate); display: flex; align-items: center; gap: 4px; }
+  .toolbar { display: flex; gap: 10px; margin-top: 10px; }
+  .search { flex: 1; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .toolbar input, .toolbar select { width: 100%; font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 9px; background: #fff; color: var(--ink); }
+  .toolbar select { width: 190px; }
+  .toolbar input:focus, .toolbar select:focus { outline: 2px solid var(--teal-wash); border-color: var(--teal); }
+  .queue-h { padding: 12px 4px 10px; }
+  .queue-h .grp { font-size: 14px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ink); gap: 10px; }
+  .queue-h .cnt { color: var(--faint); font-size: 13px; }
+  .grp-r { display: flex; align-items: center; gap: 14px; }
+  .gdot { width: 7px; height: 7px; border-radius: 50%; background: #9FB8BC; display: inline-block; }
+  .gdot.attn { background: var(--amber); }
+  .gdot.booked { background: var(--teal); }
+  .q { grid-template-columns: minmax(0, 1fr) auto 14px !important; gap: 16px; padding: 14px 16px 14px 18px; border-left: 3px solid transparent; }
+  .q .name { font-size: 15px; }
+  .q .tx { font-size: 13px; }
+  .q .track { font-size: 13.5px; color: var(--slate); justify-self: end; text-align: right; }
+  .q .chev { color: var(--faint); font-size: 18px; line-height: 1; }
+  .q.sel { background: var(--teal-wash); border-left-color: var(--teal); }
+  .q[hidden], .queue[hidden] { display: none; }
+  #rows-booked .q .name { color: var(--ink); }
+  .p-status { font-size: 12px; color: var(--slate); margin-left: auto; padding-top: 4px; white-space: nowrap; }
+  .p-status.attention { color: var(--amber); }
+  .panel-head .p-status + .x { margin-left: 8px; }
+  .p-sec h4 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .quote { font-size: 14px; line-height: 1.55; color: var(--ink); }
+  .src-line { font-size: 12px; color: var(--faint); margin-top: 6px; }
+  .kvr { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; margin: 0; font-size: 13.5px; }
+  .kvr dt { color: var(--slate); }
+  .kvr dd { margin: 0; text-align: right; }
+  .act li { display: grid; grid-template-columns: 70px 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: 13.5px; }
+  .act li:last-child { border-bottom: 0; }
+  .act time { color: var(--faint); font-size: 12.5px; }
+  .act b { font-weight: 500; display: block; }
+  .act span { color: var(--slate); font-size: 12.5px; }
+  .next-line { margin-top: 12px; padding: 8px 0 8px 12px; border-left: 2px solid var(--teal); font-size: 13.5px; color: var(--slate); }
+  .next-line b { color: var(--ink); font-weight: 600; }
   .p-tabs { display: flex; gap: 2px; padding: 8px 14px 0; border-bottom: 1px solid var(--rule); }
   .p-tabs button { padding: 7px 10px; font-size: 13px; font-weight: 500; color: var(--slate); border-bottom: 2px solid transparent; margin-bottom: -1px; }
   .p-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--teal); }
@@ -383,31 +424,34 @@
 
     <!-- QUEUE -->
     <section class="view" id="v-queue">
-      <div class="view-head">
-        <h2>Patients</h2>
-        <span class="sub">From patient charts: treatment recommended in the last 90 days <span class="mk">2</span></span>
-      </div>
+      <header class="page-head">
+        <h1>Patients</h1>
+        <p>Recommended care, followed through to completion.</p>
+      </header>
 
 
       <div class="pt-layout" id="ptLayout">
         <div class="pt-list">
-          <div class="filters" role="tablist" aria-label="Filter patients">
-            <button role="tab" data-filter="all" aria-selected="true">All <span class="cnt" data-count="all"></span></button>
-            <button role="tab" data-filter="attention" aria-selected="false">Needs attention <span class="cnt" data-count="attention"></span></button>
-            <button role="tab" data-filter="progress" aria-selected="false">In progress <span class="cnt" data-count="progress"></span></button>
-            <button role="tab" data-filter="booked" aria-selected="false">Booked <span class="cnt" data-count="booked"></span></button>
+          <div class="count-line"><span data-count="all"></span> patients · from charts, last 90 days <span class="mk">2</span></div>
+          <div class="toolbar">
+            <label class="search"><span class="sr">Search patients</span><input id="ptSearch" type="search" placeholder="Search patients" /></label>
+            <select id="ptStatus" aria-label="Filter by status">
+              <option value="all">All statuses</option>
+              <option value="attention">Needs attention</option>
+              <option value="progress">In progress</option>
+              <option value="booked">Booked</option>
+            </select>
           </div>
-          <div class="colh"><span>Patient</span><span>Status</span><span class="hide-p">Last heard from</span><span class="hide-p">Next</span></div>
           <div class="queue" data-group="attention">
-            <div class="queue-h"><span class="grp attn">Needs attention <span class="cnt" data-count="attention"></span> <span class="mk">3</span></span><span class="grp-help">The coordinator handed these to a person</span></div>
+            <div class="queue-h"><span class="grp"><i class="gdot attn"></i>Needs attention <span class="mk">3</span></span><span class="cnt" data-count="attention"></span></div>
             <div class="rows" id="rows-attention"></div>
           </div>
           <div class="queue" data-group="progress">
-            <div class="queue-h"><span class="grp">In progress <span class="cnt" data-count="progress"></span></span><span class="grp-help">Handled automatically · nothing needed from you</span></div>
+            <div class="queue-h"><span class="grp"><i class="gdot"></i>In progress</span><span class="cnt" data-count="progress"></span></div>
             <div class="rows" id="rows-progress"></div>
           </div>
           <div class="queue" data-group="booked">
-            <div class="queue-h"><span class="grp">Booked <span class="cnt" data-count="booked"></span> <span class="mk">4</span></span><button class="link" data-open-cal>Open calendar</button></div>
+            <div class="queue-h"><span class="grp"><i class="gdot booked"></i>Booked <span class="mk">4</span></span><span class="grp-r"><button class="link" data-open-cal>Open calendar</button><span class="cnt" data-count="booked"></span></span></div>
             <div class="rows" id="rows-booked"></div>
           </div>
         </div>
@@ -418,6 +462,7 @@
               <h3 id="pName">Maya Chen</h3>
               <div class="p-tx" id="pChart"></div>
             </div>
+            <span class="p-status" id="pStatus"></span>
             <button class="x" id="pClose" aria-label="Close patient">×</button>
           </div>
           <div class="p-tabs" role="tablist">
@@ -425,8 +470,10 @@
             <button role="tab" data-ptab="convo" aria-selected="false">Conversation</button>
           </div>
           <div data-ppane="info">
-            <dl class="p-info" id="pInfo"></dl>
             <div class="p-sec" id="pRec"></div>
+            <div class="p-sec"><dl class="kvr" id="pSys"></dl></div>
+            <div class="p-sec"><dl class="kvr" id="pInfo"></dl></div>
+            <div class="p-sec" id="pAct"></div>
           </div>
           <div data-ppane="convo" hidden>
             <div class="thread-bar"><span id="pChannel"></span><label class="src-toggle"><input type="checkbox" id="srcToggle" /> Show sources</label></div>
@@ -547,9 +594,9 @@
 
   <ol class="notes" data-for="queue">
     <li><span class="mk">1</span><span><b>Connections in one line.</b> <span class="t">&ldquo;Synced 9:04 AM&rdquo; is all staff need. Clicking it lists the four sources and what each is used for. A failed sync would turn this amber.</span></span></li>
-    <li><span class="mk">2</span><span><b>Where the list comes from, in one line.</b> <span class="t">Every patient here has treatment in their chart and nothing booked. There are only two states: in progress or booked. No progress bar, because nobody knows in advance how many steps a patient will take.</span></span></li>
-    <li><span class="mk">3</span><span><b>Needs attention comes first.</b> <span class="t">These are the only patients waiting on a person, and the amber label says who: the front desk, or a named dentist. Everything below is handled automatically. The filters at the top narrow the list to one group.</span></span></li>
-    <li><span class="mk">4</span><span><b>Four facts per row, in the patient&rsquo;s terms.</b> <span class="t">Status describes what the patient is doing (&ldquo;Choosing a time&rdquo;, &ldquo;Not replying&rdquo;). &ldquo;Last heard from&rdquo; shows whether it&rsquo;s live or going cold. &ldquo;Next&rdquo; shows what happens without anyone stepping in. When a patient is open, the row shrinks to name and status, aligned right, and those details move into the panel. Booked patients sit last, with the calendar a click away.</span></span></li>
+    <li><span class="mk">2</span><span><b>Purpose first, source second.</b> <span class="t">The title says what the list is for. The count line says where the patients come from. Search and one status dropdown scale to hundreds of patients without a row of pills.</span></span></li>
+    <li><span class="mk">3</span><span><b>One status phrase per row.</b> <span class="t">Name over treatment and dentist, then a single phrase on the right that says what&rsquo;s going on and, for handoffs, who it&rsquo;s waiting on. Only the Needs attention dot is amber.</span></span></li>
+    <li><span class="mk">4</span><span><b>The Patient tab is a short case file.</b> <span class="t">What the chart says (quoted, with its source); the state of each connected system for this patient; contact details; recent activity; and one line saying what happens next.</span></span></li>
   </ol>
   <ol class="notes" data-for="knowledge" hidden>
     <li><span class="mk">7</span><span><b>FAQ and chart, side by side.</b> <span class="t">Pick a question and a real patient to see the reply that would go out, with each sentence tinted by its source. Staff can check a wording edit against a real case before saving it.</span></span></li>
@@ -605,14 +652,19 @@ const ROWS = {
     ['hana', 'Booked · Tue 20 Oct, 8:00', '', 'Replied 9 Oct', 'Mon 19 Oct', 'reminder'],
   ],
 };
-const rowHtml = (group) => ([id, status, flag, heard, when, what]) => {
+// One status phrase per patient, in plain language. Handoffs name who it's waiting on.
+const PHRASE = {
+  omar: 'Asked about cost · front desk', elena: 'Clinical question · Dr. Bell',
+  james: 'No reply in 7 days', daniel: 'Choosing a time', maya: 'Choosing a time',
+  nora: 'First text today, 10:00', leo: 'First email Tue', aisha: 'Paused until 22 Oct',
+  robert: 'Booked Thu 15 Oct, 1:30', sam: 'Booked Fri 16 Oct, 10:00', hana: 'Booked Tue 20 Oct, 8:00',
+};
+const rowHtml = (group) => ([id]) => {
   const p = patients[id];
-  const dot = group === 'attention' ? 'amber' : group === 'booked' ? 'booked' : status.startsWith('Paused') ? 'paused' : status === 'Not contacted yet' ? 'new' : '';
-  return `<button class="q" data-p="${id}">
-    <span class="who"><span class="name">${p.name}</span><span class="tx">${p.dr}</span></span>
-    <span class="track"><span class="sdot ${dot}"></span><span>${status}${flag ? `<span class="flag">${flag}</span>` : ''}</span></span>
-    <span class="heard ${heard.startsWith('No reply') ? 'cold' : ''}">${heard}</span>
-    <span class="nx"><b>${when}</b> · ${what}</span>
+  return `<button class="q" data-p="${id}" data-name="${p.name.toLowerCase()}">
+    <span class="who"><span class="name">${p.name}</span><span class="tx">${p.tx} · ${p.dr}</span></span>
+    <span class="track">${PHRASE[id]}</span>
+    <span class="chev" aria-hidden="true">›</span>
   </button>`;
 };
 Object.entries(ROWS).forEach(([g, list]) => {
@@ -620,11 +672,17 @@ Object.entries(ROWS).forEach(([g, list]) => {
   document.querySelectorAll(`[data-count="${g}"]`).forEach((el) => (el.textContent = list.length));
 });
 document.querySelectorAll('[data-count="all"]').forEach((el) => (el.textContent = Object.values(ROWS).flat().length));
-document.querySelectorAll('[data-filter]').forEach((b) => b.addEventListener('click', () => {
-  const f = b.dataset.filter;
-  document.querySelectorAll('[data-filter]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
-  document.querySelectorAll('.queue[data-group]').forEach((q) => (q.hidden = f !== 'all' && q.dataset.group !== f));
-}));
+function applyFilter() {
+  const f = document.getElementById('ptStatus').value;
+  const q = document.getElementById('ptSearch').value.trim().toLowerCase();
+  document.querySelectorAll('.queue[data-group]').forEach((g) => {
+    let shown = 0;
+    g.querySelectorAll('.q').forEach((r) => { const ok = !q || r.dataset.name.includes(q); r.hidden = !ok; if (ok) shown++; });
+    g.hidden = (f !== 'all' && g.dataset.group !== f) || shown === 0;
+  });
+}
+document.getElementById('ptStatus').addEventListener('change', applyFilter);
+document.getElementById('ptSearch').addEventListener('input', applyFilter);
 
 /* ── views ──────────────────────────────────────────── */
 function show(view) {
@@ -772,6 +830,19 @@ const convos = {
   },
 };
 
+const ACT = {
+  maya: [['28 Sep', 'Crown recommended', 'Dr. Shah · from the chart'], ['Mon 9:00', 'First text sent', 'No appointment 14 days after the plan'], ['Mon 9:37', 'Recommendation explained', 'Dr. Shah’s note and crowns.md'], ['Mon 9:44', 'Morning times offered', '3 options with Dr. Shah']],
+  daniel: [['21 Sep', 'Crown recommended', 'Dr. Shah · from the chart'], ['Mon 9:00', 'First text sent', ''], ['Mon 12:16', 'Visit explained', 'the-appointment.md'], ['Mon 12:20', 'Afternoon times offered', '3 options with Dr. Shah']],
+  james: [['14 Sep', 'Root canal recommended', 'Dr. Bell · from the chart'], ['5 Oct', 'First text sent', ''], ['8 Oct', 'Follow-up 1 of 2 sent', 'No reply']],
+  elena: [['24 Sep', 'Crown recommended', 'Dr. Bell · from the chart'], ['Tue', 'Recommendation explained', 'Dr. Bell’s note and crowns.md'], ['Thu 9:39', 'Question sent to Dr. Bell’s team', 'Chart doesn’t cover alternatives'], ['Thu 9:42', 'Call with Dr. Bell booked', 'Thu 22 Oct, 12:30']],
+  omar: [['26 Sep', 'Crown recommended', 'Dr. Bell · from the chart'], ['Fri', 'First text sent', ''], ['Mon 8:25', 'Handed to front desk', 'Cost question · insurance not connected']],
+  aisha: [['16 Sep', 'Fillings recommended', 'Dr. Shah · from the chart'], ['30 Sep', 'First text sent', ''], ['1 Oct', 'Paused at her request', 'Exams until 21 Oct']],
+  nora: [['29 Sep', 'Deep cleaning recommended', 'Dr. Bell · from the chart'], ['9:04', 'Found in chart', 'First text scheduled']],
+  leo: [['30 Sep', 'Implant recommended', 'Dr. Shah · from the chart'], ['9:04', 'Found in chart', 'First email scheduled (his preference)']],
+  robert: [['18 Sep', 'Bridge recommended', 'Dr. Shah · from the chart'], ['5 Oct', 'First text sent', ''], ['6 Oct', 'Booked', 'Thu 15 Oct, 1:30']],
+  sam: [['22 Sep', 'Filling recommended', 'Dr. Shah · from the chart'], ['9 Oct', 'First text sent', ''], ['Mon', 'Booked', 'Fri 16 Oct, 10:00']],
+  hana: [['25 Sep', 'Deep cleaning recommended', 'Dr. Bell · from the chart'], ['9 Oct', 'Visit explained, then booked', 'Tue 20 Oct, 8:00']],
+};
 const panel = document.getElementById('panel'), ptLayout = document.getElementById('ptLayout');
 const PROFILE = {
   maya: ['38', '(555) 014-2231', 'Texts, weekdays 9–6', 'Mornings', '28 Sep · exam & cleaning'],
@@ -796,11 +867,21 @@ function openPanel(id) {
   document.getElementById('pName').textContent = p.name;
   document.getElementById('pChart').textContent = `${p.tx} · ${p.dr}`;
   const row = Object.values(ROWS).flat().find((r) => r[0] === id);
-  const [, rStatus, rFlag, rHeard, rWhen, rWhat] = row;
-  document.getElementById('pInfo').innerHTML =
-    `<dt>Status</dt><dd>${rStatus}${rFlag ? `<span class="flag">${rFlag}</span>` : ''}</dd><dt>Last heard</dt><dd>${rHeard}</dd><dt>Next</dt><dd><b>${rWhen}</b> · ${rWhat}</dd><dt class="dsep"></dt><dd class="dsep"></dd><dt>Age</dt><dd>${age}</dd><dt>${phone.includes('@') ? 'Email' : 'Phone'}</dt><dd>${phone}</dd><dt>Contact</dt><dd>${contact}</dd><dt>Prefers</dt><dd>${times}</dd><dt>Last visit</dt><dd>${last}</dd><dt>Recommended</dt><dd>${p.tx} · ${p.dr} · ${p.date}</dd>`;
+  const group = Object.keys(ROWS).find((g) => ROWS[g].some((r) => r[0] === id));
+  const [, , , , rWhen, rWhat] = row;
+  const isEmail = phone.includes('@');
+  document.getElementById('pStatus').textContent = { attention: 'Needs attention', progress: 'In progress', booked: 'Booked' }[group];
+  document.getElementById('pStatus').className = 'p-status ' + group;
   document.getElementById('pRec').innerHTML =
-    `<div class="k">From the chart</div><div class="card chart"><div class="t">${c.chart.title}</div><p>${c.chart.text}</p><div class="foot">${c.chart.foot}</div></div>`;
+    `<h4>From the chart</h4><p class="quote">${c.chart.text.replace(/<\/?mark>/g, '')}</p><p class="src-line">${p.dr} · ${p.date} · patient chart, synced 9:04 AM</p>`;
+  const booked = PHRASE[id].startsWith('Booked') ? PHRASE[id].replace('Booked ', '') : 'No appointment';
+  document.getElementById('pSys').innerHTML =
+    `<dt>Treatment history</dt><dd>Not completed</dd><dt>Scheduling</dt><dd>${booked}</dd><dt>${isEmail ? 'Email' : 'Text messages'}</dt><dd>${id === 'omar' ? 'Paused for front desk' : 'Allowed'}</dd>`;
+  document.getElementById('pInfo').innerHTML =
+    `<dt>${isEmail ? 'Email' : 'Phone'}</dt><dd>${phone}</dd><dt>Best time</dt><dd>${contact.replace(/^(Texts|Email),\s*/, '')} · ${times.toLowerCase()}</dd><dt>Age</dt><dd>${age}</dd><dt>Last visit</dt><dd>${last}</dd>`;
+  document.getElementById('pAct').innerHTML =
+    `<h4>Recent activity</h4><ol class="act">${(ACT[id] || []).map(([t, h, d]) => `<li><time>${t}</time><div><b>${h}</b>${d ? `<span>${d}</span>` : ''}</div></li>`).join('')}</ol>
+     <p class="next-line">Next: <b>${rWhen}</b> · ${rWhat}</p>`;
   // Split "Mon 9:36" into a day (shown once, as a separator) and a time (shown under the bubble).
   let lastDay = null;
   const msgs = c.msgs.map(([who, t, html], i) => {
