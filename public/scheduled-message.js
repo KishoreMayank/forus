@@ -6,7 +6,7 @@ export function scheduledMessage(state,c){
  const prior=new Date(a.start-DAY);
  prior.setUTCHours(17,0,0,0);
  const at=Math.max(state.now,prior.getTime());
- const date=new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}).format(a.start).replace(',','');
+ const date=new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}).format(a.start);
  const time=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit',timeZone:'UTC'}).format(a.start);
  return {key,at,paused:c.reminder?.key===key&&c.reminder.paused,kind:a.kind==='Discussion'?'discussion reminder':'appointment reminder',text:`Reminder: your ${a.kind==='Discussion'?'discussion':'appointment'} with ${a.provider} is on ${date} at ${time} (${a.duration||60} minutes). Reply here if you need a different time.`};
 }

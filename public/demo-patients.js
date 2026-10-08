@@ -1,4 +1,4 @@
-import {seed,processDue,act,slots,DAY,attachBilling,cardEnding,PAY_METHODS,requestPayment} from './engine.js?v=7';
+import {seed,processDue,act,slots,DAY,attachBilling,cardEnding,PAY_METHODS,requestPayment} from './engine.js?v=9';
 
 // Additional fictional cases use the same workflow as the original demo.
 const samples=[
@@ -41,10 +41,22 @@ const CONTACT={
  ben:['(555) 014-7301','Evenings',44,'Sep 15 · exam'],
  'ella-cost':['(555) 014-6029','Weekdays after 3 PM',39,'Sep 25 · root canal']
 };
+// Patient-facing wording: keep the clinical reason, drop staff instructions from the chart note.
+const forPatient=rationale=>rationale.split(/(?<=\.)\s+/).filter(x=>!/^(Follow up|The patient|Patient |The follow-up visit is now)/.test(x)).join(' ');
+const spoken=treatment=>{const [what,where]=treatment.split(' · ');return (where?`${what} for ${/^tooth/.test(where)?'':'the '}${where}`:what).toLowerCase();};
+function patientCopy(c,treatment,rationale){
+ return {explanation:`${forPatient(rationale)} The team can answer questions before the visit; you decide whether to proceed.`,outreach:`Hi ${c.name.split(' ')[0]}, I’m Clara, Cedar Dental’s AI assistant. I’m following up on your recommended ${spoken(treatment)}. I can help with questions or find a time for the visit. What would be helpful?`};
+}
 function applyPlan(c){
- const plan=plans[c.id];if(!plan||c.planRevision===1)return;
+ const plan=plans[c.id];if(!plan||c.planRevision===2)return;
  const [treatment,duration,rationale]=plan;
- Object.assign(c,{treatment,duration,note:`Dr. Lee · Oct 9: ${rationale}`,explanation:`${rationale} The team can answer questions before the visit; you decide whether to proceed.`,outreach:`Hi ${c.name.split(' ')[0]}, I’m Clara, Cedar Dental’s AI assistant. I’m following up on your recommended care: ${treatment.toLowerCase()}. I can help with questions or find a time for the outstanding visit. What would be helpful?`,planRevision:1});
+ if(c.planRevision===1){
+  // Revision 2: earlier copy quoted staff notes ("The patient requested…") and raw labels to the patient.
+  const before={explanation:c.explanation,outreach:c.outreach},after=patientCopy(c,treatment,rationale);
+  for(const m of c.messages){if(m.text===before.explanation)m.text=after.explanation;if(m.text===before.outreach)m.text=after.outreach;}
+  Object.assign(c,after,{planRevision:2});return;
+ }
+ Object.assign(c,{treatment,duration,note:`Dr. Lee · Oct 9: ${rationale}`,...patientCopy(c,treatment,rationale),planRevision:2});
  // Migrate existing fictional conversations without resetting patient decisions.
  for(const m of c.messages){
   if(m.who==='agent'&&m.text.includes('crown recommendation'))m.text=c.outreach;
@@ -55,7 +67,6 @@ function applyPlan(c){
  if(c.appointment?.kind==='Treatment')c.appointment.duration=duration;
  for(const e of c.events){e.detail=e.detail.replace('practice-approved crown guide','recorded care plan').replace('60 minutes',`${duration} minutes`);}
 }
-
 
 const threadStarters={
  maya:['Is this about the tooth we discussed at my last visit?','Yes—the crown recommended for tooth 30. I’m following up because it has not been scheduled.','I have a few questions before I book.','Of course. What would you like to understand about the recommendation?'],

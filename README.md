@@ -21,7 +21,7 @@ Requires Node.js 20+. The workflow tests cover scheduling, pauses, completion, c
 ## Files
 
 - `public/index.html`: Patients, the main entry point.
-- `public/knowledge.html`: practice knowledge and answer editing.
+- `public/knowledge.html`: practice FAQs with a live preview of how Clara would answer. Edits are saved in this browser; Clara’s scripted demo replies don’t change.
 - `public/integrations.html`: integration overview and source viewers.
 - `public/engine.js`: shared demo state and workflow logic. Includes fictional insurance estimates and the `pay` action: after a treatment visit is booked, Clara texts the estimated share and the patient replies to pay with the card on file or to pay at the visit. Staff see the status on the patient, a Paid tag in the list, and payments under Integrations → Insurance & billing. No card is charged.
 - Other files in `public/`: styles, page logic, calendar, sample records, and reminder previews.

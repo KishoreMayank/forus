@@ -1,4 +1,4 @@
-import {fmtFull,fmtTime,money,balance,paid,ledger} from './engine.js?v=7';
+import {fmtFull,fmtTime,money,balance,paid,ledger} from './engine.js?v=9';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function setupSourceData(getState){
  if(!document.querySelector('[data-view-source]'))return;

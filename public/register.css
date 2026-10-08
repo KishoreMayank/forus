@@ -531,3 +531,15 @@ body:has(.mobile-patient-dialog[open]){overflow:hidden}
 .billing-panel .billing-paid,.billing-panel .billing-note{margin-top:10px}
 .billing-status{display:flex;align-items:baseline;gap:8px;margin-top:12px;font-size:11px;line-height:1.6;color:#5d7363}
 .billing-status .live-dot{flex-shrink:0;margin:0;background:#c48a3a}
+
+/* Phones: the side rail becomes a labelled bottom tab bar. */
+@media(max-width:480px){
+ .rail,.knowledge-page .rail{inset:auto 0 0 0;width:auto;height:auto;padding:6px 8px calc(6px + env(safe-area-inset-bottom));flex-direction:row;border-right:0;border-top:1px solid #e4e9e6;background:#f8faf9f2;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:20;overflow:visible}
+ .rail .clinic{display:none}
+ .rail nav{margin:0;flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+ .rail nav a{flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:7px 4px;font-size:10px;line-height:1.2;min-height:48px}
+ .rail nav a span{display:block}
+ .rail nav .nav-icon{width:20px;height:20px}
+ .app-main,.knowledge-page .app-main{margin-left:0;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+ .notice{bottom:calc(76px + env(safe-area-inset-bottom))}
+}

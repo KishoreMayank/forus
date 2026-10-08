@@ -4,7 +4,7 @@ export const START = Date.UTC(2026,9,12,9);
 export const knowledge = [
  {id:'crown', title:'Understanding a recommended crown', category:'Treatment understanding', source:'Practice-approved patient guide', updated:'Oct 8, 2026', text:'A crown covers and supports a tooth. A dentist may recommend one when the remaining tooth needs protection. The patient’s own clinical record supplies the reason for their recommendation; this guide does not establish a diagnosis.'},
  {id:'visit', title:'What happens at the visit', category:'Patient experience', source:'Cedar Dental care team', updated:'Oct 8, 2026', text:'The dental team reviews the planned treatment and answers questions before beginning. The booked visit follows the existing treatment plan. Patients can ask to discuss the recommendation before deciding to proceed.'},
- {id:'schedule', title:'Finding the right appointment', category:'Scheduling', source:'Practice scheduling configuration', updated:'Oct 9, 2026', text:'For these sample plans, reserve 60 minutes with Dr. Lee for treatment, or 30 minutes with Dr. Shah for a discussion. Check current availability before confirming. A consultation does not complete the treatment plan.'}
+ {id:'schedule', title:'Finding the right appointment', category:'Scheduling', source:'Practice scheduling configuration', updated:'Oct 9, 2026', text:'Treatment visits use the length in each patient’s plan (30–90 minutes) with Dr. Lee. A discussion with Dr. Shah is 30 minutes. Check current availability before confirming. A discussion does not complete the treatment plan.'}
 ];
 export const fmtDate = t => new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',timeZone:'UTC'}).format(t);
 export const fmtFull = t => new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}).format(t);
@@ -41,11 +41,12 @@ export function event(s,c,title,detail){ c.events.push({id:`${c.id}-${c.events.l
 function say(s,c,text,who='agent',sources=[]){c.messages.push({id:`${c.id}-m${c.messages.length}`,at:s.now,who,text,sources});}
 function patient(s,c,text){say(s,c,text,'patient');}
 const base = (id,name,initials,color,barrier,note) => ({id,name,initials,color,barrier,note,treatment:'Crown · tooth 30',sourceStatus:'active',status:'eligible',stage:'outreach',contact:true,appointment:null,wakeAt:null,attempts:0,messages:[],events:[],sources:[],consult:false});
+const CHART_IDS={maya:1042,jordan:1087,alex:1103};
 export function seed(){const s={version:VERSION,now:START,selected:'maya',view:'admin',page:'patients',tab:'conversation',cases:[
  base('maya','Maya Chen','MC','lilac','Treatment understanding','Dr. Lee · Oct 9: Tooth 30 has a recorded crack. A crown was recommended to protect and support the remaining tooth.'),
  base('jordan','Jordan Ellis','JE','blue','Scheduling','Dr. Lee · Oct 9: Tooth 30 has a recorded crack. A crown was recommended to protect and support the remaining tooth. Patient asked for help finding a time.'),
  base('alex','Alex Morgan','AM','peach','Treatment understanding','Dr. Lee · Oct 9: Crown recommended for tooth 30. The synced note does not include the patient-specific rationale.')
-]};s.cases.forEach(attachBilling);processDue(s);return s;}
+]};s.cases.forEach(c=>{c.chartId=CHART_IDS[c.id];attachBilling(c);});processDue(s);return s;}
 export function processDue(s){for(const c of s.cases){
  if(!c.contact||c.sourceStatus==='completed'||c.appointment||['declined','closed'].includes(c.status))continue;
  if(c.status==='eligible'){say(s,c,c.outreach||`Hi ${c.name.split(' ')[0]}, I’m Clara, Cedar Dental’s AI assistant. You have a crown recommendation from Dr. Lee that hasn’t been scheduled. I can help you understand the recommendation or find a time. What would be helpful?`);c.status='waiting';c.attempts=1;c.wakeAt=s.now+3*DAY;event(s,c,'Follow-up started','Current plan and contact preferences checked. Initial message sent automatically.');}
@@ -63,6 +64,24 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
   if(!c.appointment||c.appointment.kind!=='Treatment')return {ok:false,message:'A treatment appointment is required.'};
   s.now=Math.max(s.now,c.appointment.start+c.appointment.duration*60000);c.sourceStatus='completed';c.status='completed';c.stage='done';c.wakeAt=null;
   event(s,c,'Treatment confirmed complete','The simulated practice record confirms treatment completion. Pending follow-up removed.');return {ok:true,message:'Practice record updated. Treatment complete.'};
+ }
+ if(type==='resolve'){
+  const first=c.name.split(' ')[0];
+  if(c.attention){
+   const b=c.billing;c.attention=null;c.status='engaged';c.stage='explained';c.wakeAt=null;
+   if(c.contact&&b)say(s,c,`The front desk confirmed your estimate: ${money(b.share)} patient share${b.insurance?` (${money(b.fee)} fee, less ${b.plan}’s ${money(b.insurance)} estimate)`:''}. Would you like to find a time?`);
+   event(s,c,'Estimate confirmed','Front desk reviewed fees and benefits. Clara sent the estimated share to the patient.');
+   return {ok:true,message:`Estimate confirmed and sent to ${first}.`};
+  }
+  if(c.note.includes('does not include the patient-specific rationale')){
+   c.note='Dr. Lee · Oct 12: Tooth 30 has a large old filling with a crack along the back wall. A crown was recommended to protect the tooth from breaking.';
+   c.explanation='Tooth 30 has a large old filling with a crack along the back. A crown protects the tooth from breaking further. The team can answer questions before the visit; you decide whether to proceed.';
+   c.status='engaged';c.stage='explained';c.wakeAt=null;c.sources=['note'];
+   if(c.contact)say(s,c,`Dr. Lee added the reason to your chart. ${c.explanation}`,'agent',['note']);
+   event(s,c,'Reason added to chart','Dr. Lee recorded the patient-specific reason. Clara shared it with the patient.');
+   return {ok:true,message:`Reason added. Clara explained it to ${first}.`};
+  }
+  return {ok:false,message:'Nothing needs review for this patient.'};
  }
  if(type==='pay'||type==='payatvisit'){
   if(!c.billing||!c.appointment||c.appointment.kind!=='Treatment')return {ok:false,message:'Payment is for a booked treatment visit.'};
@@ -84,9 +103,9 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
  }
  if(type==='cancel'){
   if(!c.appointment||c.sourceStatus==='completed')return {ok:false,message:'No active appointment to cancel.'};
-  c.appointment=null;c.wakeAt=null;c.status=c.contact?'engaged':'stopped';c.stage='cancelled';
+  if(c.contact)patient(s,c,'I need to cancel my appointment');c.appointment=null;c.wakeAt=null;c.status=c.contact?'engaged':'stopped';c.stage='cancelled';
   event(s,c,'Appointment cancelled','Scheduling record updated. Previous slot released; coordination reopened.');
-  if(c.contact)say(s,c,'Your appointment has been cancelled. I can find another time, or reconnect when it works better for you.');return {ok:true,message:'Appointment cancelled. Follow-up reopened.'};
+  const kept=paid(c);if(c.contact)say(s,c,`Your appointment has been cancelled.${kept?` Your ${money(kept)} payment stays on file for your next visit.`:''} I can find another time, or reconnect when it works better for you.`);return {ok:true,message:'Appointment cancelled. Follow-up reopened.'};
  }
  if(!canReply(c))return {ok:false,message:'This conversation is closed.'};
  if(type==='stop'){patient(s,c,'Stop messages');c.contact=false;c.wakeAt=null;c.stage='done';say(s,c,'Messages stopped. You can still contact Cedar Dental directly. Any existing appointment remains booked.');event(s,c,'Contact preference updated','All future coordinator outreach suppressed.');return {ok:true,message:'Future outreach stopped.'};}
