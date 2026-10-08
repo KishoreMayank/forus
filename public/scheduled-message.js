@@ -18,6 +18,6 @@ export function updateScheduledMessage(state,c,action){
   c.reminder={key:pending.key,sent:true,paused:false};
  }else if(action==='pause'||action==='resume')c.reminder={key:pending.key,sent:false,paused:action==='pause'};
  else return false;
- c.events.push({id:`${c.id}-${c.events.length}`,at:state.now,title:action==='send'?'Reminder sent':action==='pause'?'Reminder paused':'Reminder resumed',detail:action==='send'?'Appointment reminder sent in the scripted demo.':action==='pause'?'The appointment remains booked; its reminder is on hold.':'Appointment reminder returned to the schedule.'});
+ c.events.push({id:`${c.id}-${c.events.length}`,at:state.now,title:action==='send'?'Reminder sent':action==='pause'?'Reminder paused':'Reminder resumed',detail:action==='send'?'Appointment reminder sent.':action==='pause'?'The appointment remains booked; its reminder is on hold.':'Appointment reminder returned to the schedule.'});
  return true;
 }

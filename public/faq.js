@@ -1,7 +1,7 @@
 import {costInsuranceEntries} from './cost-insurance.js?v=2';
 import {treatmentTopics,treatmentEntries,chartExamples,treatmentDescriptions} from './treatment-knowledge.js?v=2';
-import {seed} from './engine.js?v=9';
-import {extendPatients} from './demo-patients.js?v=13';
+import {seed} from './engine.js?v=10';
+import {extendPatients} from './demo-patients.js?v=14';
 const key='cedar-knowledge-v2';
 const oldKey='cedar-practice-faq-v1';
 const host=document.querySelector('.faq-list');
@@ -82,7 +82,7 @@ const handling=document.createElement('label');handling.className='faq-handling'
 document.body.classList.add('knowledge-page');
 const topicNav=document.createElement('details');topicNav.className='workspace-sections';
 const wideSections=window.matchMedia('(min-width:1101px)');topicNav.open=wideSections.matches;wideSections.addEventListener('change',event=>{topicNav.open=event.matches;});
-topicNav.addEventListener('click',event=>{const button=event.target.closest('[data-topic],[data-add-section]');if(!button)return;event.stopPropagation();if(button.hasAttribute('data-add-section')){sectionForm.reset();sectionError.textContent='';sectionDialog.showModal();sectionForm.elements.name.focus();return;}topic=button.dataset.topic;topicNav.open=wideSections.matches;render();});
+topicNav.addEventListener('click',event=>{const button=event.target.closest('[data-topic],[data-add-section]');if(!button)return;event.stopPropagation();if(!discardDraft())return;if(button.hasAttribute('data-add-section')){sectionForm.reset();sectionError.textContent='';sectionDialog.showModal();sectionForm.elements.name.focus();return;}topic=button.dataset.topic;topicNav.open=wideSections.matches;render();});
 const sectionDialog=document.createElement('dialog');sectionDialog.setAttribute('aria-labelledby','section-dialog-title');sectionDialog.innerHTML='<form><h2 id="section-dialog-title">Add section</h2><p>Group related questions under a topic.</p><label for="section-name">Section name</label><input id="section-name" name="name" required maxlength="50" placeholder="e.g. Preparing for your visit"><p class="section-error" role="alert"></p><div class="section-form-actions"><button class="control" type="button" data-close-section>Cancel</button><button class="control" data-primary="true" type="submit">Create section</button></div></form>';document.body.append(sectionDialog);
 const sectionForm=sectionDialog.querySelector('form'),sectionError=sectionDialog.querySelector('.section-error');
 sectionDialog.querySelector('[data-close-section]').addEventListener('click',()=>sectionDialog.close());
@@ -103,7 +103,7 @@ function renderPreview(draft){
  document.querySelector('#response-preview').innerHTML=`<div class="message-history preview-transcript" aria-label="Example conversation"><article class="chat-message patient"><div class="chat-who">Patient</div><p>${esc(e.question)}</p></article><article class="chat-message assistant"><div class="chat-who">Clara · AI assistant</div><p class="show-sources">${chart?`<span class="from-chart">${esc(chart)}</span> `:''}<span class="from-guidance">${esc(e.answer)}</span></p><details class="message-source"><summary>Sources used</summary>${chart?`<p><strong>Patient chart · example</strong><br>${esc(chart)}</p>`:''}<p><strong>Practice guidance</strong><br>${esc(e.source)}</p></details></article></div><div class="preview-legend">${chart?'<span><i class="chart-key"></i>From the chart</span>':''}<span><i class="guidance-key"></i>Practice answer</span></div>${e.dentist?'<div class="preview-routing">Dentist input required · Clara offers a discussion</div>':''}`;
 }
 function openEditor(id=null){editing=id;const e=entries.find(x=>x.id===id);form.reset();error.textContent='';document.querySelector('#faq-editor-title').textContent=e?'Edit FAQ':'Add FAQ';for(const name of ['question','answer','source'])form.elements[name].value=e?.[name]||'';form.elements.topic.value=e?.topic||topic;form.elements.dentist.checked=!!e?.dentist;editor.showModal();form.elements.question.focus();}
-host.addEventListener('click',event=>{if(event.target.closest('[data-toggle-sources]')){showSources=!showSources;renderPreview();return;}if(event.target.closest('[data-add-faq]')){openEditor();return;}const editAnswer=event.target.closest('[data-edit-faq]');if(editAnswer){editTopic(editAnswer.dataset.editFaq);return;}if(event.target.closest('[data-save-topic]')){saveTopic();return;}if(event.target.closest('[data-cancel-topic]')){render();return;}const t=event.target.closest('[data-topic],[data-preview],[data-edit]');if(!t)return;if(t.dataset.topic){topic=t.dataset.topic;render();}else if(t.dataset.edit)openEditor(t.dataset.edit);else{selected=t.dataset.preview;render();host.querySelector(`.question-select[data-preview="${CSS.escape(selected)}"]`)?.focus({preventScroll:true});}});
+host.addEventListener('click',event=>{if(event.target.closest('[data-toggle-sources]')){showSources=!showSources;renderPreview();return;}if(event.target.closest('[data-add-faq]')){if(!discardDraft())return;openEditor();return;}const editAnswer=event.target.closest('[data-edit-faq]');if(editAnswer){editTopic(editAnswer.dataset.editFaq);return;}if(event.target.closest('[data-save-topic]')){saveTopic();return;}if(event.target.closest('[data-cancel-topic]')){render();return;}const t=event.target.closest('[data-topic],[data-preview],[data-edit]');if(!t)return;if(t.dataset.topic){topic=t.dataset.topic;render();}else if(t.dataset.edit)openEditor(t.dataset.edit);else{selected=t.dataset.preview;render();host.querySelector(`.question-select[data-preview="${CSS.escape(selected)}"]`)?.focus({preventScroll:true});}});
 
 
 host.addEventListener('click',event=>{
@@ -127,6 +127,10 @@ form.addEventListener('submit',event=>{
 render();
 
 let topicDrafts=[],draftId=null;
+// Unsaved inline edits: ask before anything redraws the page, and before leaving it.
+function hasUnsavedDraft(){const d=topicDrafts.find(e=>e.id===draftId),saved=entries.find(e=>e.id===draftId);return !!(document.querySelector('.inline-faq-editor')&&d&&saved&&(d.question!==saved.question||d.answer!==saved.answer));}
+function discardDraft(){if(!hasUnsavedDraft())return true;if(!window.confirm('Discard your unsaved changes to this answer?'))return false;draftId=null;topicDrafts=[];return true;}
+window.addEventListener('beforeunload',event=>{if(hasUnsavedDraft()){event.preventDefault();event.returnValue='';}});
 function editTopic(id){
  if(document.querySelector('.inline-faq-editor')&&draftId!==id){document.querySelector('#edit-answer').focus();return;}
  topicDrafts=entries.filter(e=>e.id===id).map(e=>({...e}));

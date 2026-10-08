@@ -17,6 +17,8 @@ const BILLING={
  nora:[180,144,'Northline Dental'],grace:[95,76,'Bayside Benefits'],ben:[450,0,'Self-pay'],'ella-cost':[1250,700,'Bayside Benefits']
 };
 export const PAY_METHODS={card:'Card on file',desk:'Card reader at front desk'};
+/** "Filling · tooth 14" → "filling for tooth 14", as it reads in a text. */
+export const spoken=t=>{const [what,where]=String(t).split(' · ');return (where?`${what} for ${/^tooth/.test(where)?'':'the '}${where}`:what).toLowerCase();};
 export const money=n=>`$${Number(n).toLocaleString('en-US')}`;
 export function attachBilling(c){
  if(c.billing)return c;
@@ -30,9 +32,9 @@ export const balance=c=>c.billing?Math.max(0,c.billing.share-paid(c)):0;
 export const canTakePayment=c=>!!(c.billing&&c.appointment&&c.appointment.kind==='Treatment'&&balance(c)>0);
 /** After a treatment visit is booked, Clara texts the estimated share once and lets the patient pay or choose to pay at the visit. */
 export function requestPayment(s,c){
- if(!c.billing||c.billing.requestedAt||!c.contact||!c.appointment||c.appointment.kind!=='Treatment'||balance(c)<=0)return false;
+ if(!c.billing||c.billing.requestedAt||!c.contact||c.sourceStatus==='completed'||!c.appointment||c.appointment.kind!=='Treatment'||c.appointment.start<s.now||balance(c)<=0)return false;
  const b=c.billing;c.billing.requestedAt=s.now;
- say(s,c,`Your estimated share for this visit is ${money(balance(c))}${b.insurance?` (${money(b.fee)} fee, less ${b.plan}’s ${money(b.insurance)} estimate)`:' (self-pay)'}. You can pay now with the Visa on file ending ${cardEnding(c)}, or pay when you check in.`);
+ say(s,c,`Your estimated share for this visit is ${money(balance(c))}${b.insurance?` (${money(b.fee)} fee, less the ${money(b.insurance)} ${b.plan} is expected to cover)`:' (self-pay)'}. You can pay now with the Visa on file ending ${cardEnding(c)}, or pay when you check in.`);
  event(s,c,'Payment requested',`Estimated share of ${money(balance(c))} sent by text. Patient chooses to pay now or at the visit.`);
  return true;
 }
@@ -52,7 +54,7 @@ export function processDue(s){for(const c of s.cases){
  if(c.status==='eligible'){say(s,c,c.outreach||`Hi ${c.name.split(' ')[0]}, I’m Clara, Cedar Dental’s AI assistant. You have a crown recommendation from Dr. Lee that hasn’t been scheduled. I can help you understand the recommendation or find a time. What would be helpful?`);c.status='waiting';c.attempts=1;c.wakeAt=s.now+3*DAY;event(s,c,'Follow-up started','Current plan and contact preferences checked. Initial message sent automatically.');}
  else if(c.wakeAt&&s.now>=c.wakeAt){
  if(c.status==='paused'){c.status='engaged';c.stage='slots';c.wakeAt=null;say(s,c,`Hi ${c.name.split(' ')[0]}, you asked me to reconnect today. I’ve checked the current plan and availability. Would you like to find a time${c.consult?' to discuss the recommendation':''}?`);event(s,c,'Resumed as requested','Remembered the requested date and checked for an existing booking before contacting the patient.');}
- else if(c.status==='waiting'){if(c.attempts<3){c.attempts++;say(s,c,'Checking back on your recommended care. I can help explain the recorded recommendation, find a time, or pause these messages.');c.wakeAt=s.now+(c.attempts===2?4:3)*DAY;event(s,c,'Follow-up sent',`Attempt ${c.attempts} of 3. No booking or contact hold found.`);}else{c.status='closed';c.wakeAt=null;event(s,c,'Outreach concluded','No reply after three messages. Treatment remains outstanding; no further outreach is scheduled.');}}
+ else if(c.status==='waiting'){if(c.attempts<3){c.attempts++;say(s,c,c.attempts===3?'One last check-in about your recommended care. If now isn’t a good time, I can pause these messages, or you can contact the practice whenever you’re ready.':'Checking back on your recommended care. I can help explain the recorded recommendation, find a time, or pause these messages.');c.wakeAt=s.now+(c.attempts===2?4:3)*DAY;event(s,c,'Follow-up sent',`Attempt ${c.attempts} of 3. No booking or contact hold found.`);}else{c.status='closed';c.wakeAt=null;event(s,c,'Outreach concluded','No reply after three messages. Treatment remains outstanding; no further outreach is scheduled.');}}
  }
 }}
 export function slots(s,c){const out=[];let d=s.now+DAY;while(out.length<3){const date=new Date(d);const day=date.getUTCDay();if(day!==0&&day!==6){const start=Date.UTC(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate(),out.length===1?14:10);const id=`${start}-${c.consult?'shah':'lee'}`;if(!s.cases.some(x=>x.appointment?.id===id)){out.push({id,start,duration:c.consult?30:(c.duration||60),provider:c.consult?'Dr. Shah':'Dr. Lee',kind:c.consult?'Discussion':'Treatment'});}}d+=DAY;}return out;}
@@ -63,13 +65,13 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
  if(type==='complete'){
   if(!c.appointment||c.appointment.kind!=='Treatment')return {ok:false,message:'A treatment appointment is required.'};
   s.now=Math.max(s.now,c.appointment.start+c.appointment.duration*60000);c.sourceStatus='completed';c.status='completed';c.stage='done';c.wakeAt=null;
-  event(s,c,'Treatment confirmed complete','The simulated practice record confirms treatment completion. Pending follow-up removed.');return {ok:true,message:'Practice record updated. Treatment complete.'};
+  event(s,c,'Treatment confirmed complete','Treatment history confirms the treatment was completed. Pending follow-up removed.');return {ok:true,message:'Practice record updated. Treatment complete.'};
  }
  if(type==='resolve'){
   const first=c.name.split(' ')[0];
   if(c.attention){
    const b=c.billing;c.attention=null;c.status='engaged';c.stage='explained';c.wakeAt=null;
-   if(c.contact&&b)say(s,c,`The front desk confirmed your estimate: ${money(b.share)} patient share${b.insurance?` (${money(b.fee)} fee, less ${b.plan}’s ${money(b.insurance)} estimate)`:''}. Would you like to find a time?`);
+   if(c.contact&&b)say(s,c,`The front desk confirmed your estimate: ${money(b.share)} patient share${b.insurance?` (${money(b.fee)} fee, less the ${money(b.insurance)} ${b.plan} is expected to cover)`:''}. Would you like to find a time?`);
    event(s,c,'Estimate confirmed','Front desk reviewed fees and benefits. Clara sent the estimated share to the patient.');
    return {ok:true,message:`Estimate confirmed and sent to ${first}.`};
   }
@@ -98,40 +100,48 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
   patient(s,c,`Pay ${money(due)} with my card ending ${cardEnding(c)}`);
   s.paySeq=(s.paySeq||0)+1;c.billing.payments.push({id:`${c.id}-pay${n+1}`,at:s.now,seq:s.paySeq,amount:due,method,receipt:`R-${c.chartId||c.id}-${n+1}`});c.billing.payAtVisit=false;
   say(s,c,`Thanks, ${c.name.split(' ')[0]}. ${money(due)} was charged to your ${card}. Your balance is now ${money(balance(c))}. Receipt ${c.billing.payments.at(-1).receipt}.${c.billing.insurance?` We’ll bill ${c.billing.plan} for the ${money(c.billing.insurance)} estimate.`:''} See you ${fmtFull(c.appointment.start)} at ${fmtTime(c.appointment.start)}.`);
-  event(s,c,'Payment received',`Patient authorized ${money(due)} by text · ${card}.${c.billing.insurance?` Insurance estimate of ${money(c.billing.insurance)} billed to ${c.billing.plan}.`:''} Treatment completion still comes from treatment history.`);
+  event(s,c,'Payment received',`Patient authorized ${money(due)} by text · ${card}.${c.billing.insurance?` Insurance estimate of ${money(c.billing.insurance)} to be billed to ${c.billing.plan}.`:''} Treatment completion still comes from treatment history.`);
   return {ok:true,message:`${c.name} paid ${money(due)} by text. Billing updated in Integrations.`};
  }
  if(type==='cancel'){
   if(!c.appointment||c.sourceStatus==='completed')return {ok:false,message:'No active appointment to cancel.'};
   if(c.contact)patient(s,c,'I need to cancel my appointment');c.appointment=null;c.wakeAt=null;c.status=c.contact?'engaged':'stopped';c.stage='cancelled';
-  event(s,c,'Appointment cancelled','Scheduling record updated. Previous slot released; coordination reopened.');
-  const kept=paid(c);if(c.contact)say(s,c,`Your appointment has been cancelled.${kept?` Your ${money(kept)} payment stays on file for your next visit.`:''} I can find another time, or reconnect when it works better for you.`);return {ok:true,message:'Appointment cancelled. Follow-up reopened.'};
+  event(s,c,'Appointment cancelled','Scheduling record updated. Previous slot released; Clara offered to find another time.');
+  const kept=paid(c);if(c.contact)say(s,c,`Your appointment has been cancelled.${kept?` Your ${money(kept)} payment stays on file for your next visit.`:''} I can find another time, or reconnect when it works better for you.`);return {ok:true,message:'Appointment cancelled. Clara offered another time.'};
  }
  if(!canReply(c))return {ok:false,message:'This conversation is closed.'};
  if(type==='stop'){patient(s,c,'Stop messages');c.contact=false;c.wakeAt=null;c.stage='done';say(s,c,'Messages stopped. You can still contact Cedar Dental directly. Any existing appointment remains booked.');event(s,c,'Contact preference updated','All future coordinator outreach suppressed.');return {ok:true,message:'Future outreach stopped.'};}
  if(type==='decline'){if(c.appointment)return {ok:false,message:'Cancel the appointment before declining treatment.'};patient(s,c,'I don’t want to proceed');c.status='declined';c.stage='done';c.wakeAt=null;say(s,c,'Understood. I won’t follow up on this recommendation again. You can contact the practice if you change your mind.');event(s,c,'Patient declined','Coordination closed. The clinical recommendation remains in the source record.');return {ok:true,message:'Patient decision recorded.'};}
+ if(type==='keep'){
+  if(!c.appointment||c.stage!=='slots')return {ok:false,message:'No change in progress.'};
+  patient(s,c,'Keep my current appointment');c.stage='booked';
+  say(s,c,`No problem. You’re still booked for ${fmtFull(c.appointment.start)} at ${fmtTime(c.appointment.start)}.`);
+  return {ok:true,message:''};
+ }
  if(c.appointment&&!['slots'].includes(type)&&type!=='book')return {ok:false,message:'Change or cancel the existing appointment first.'};
- c.wakeAt=null;
+ const prevWake=c.wakeAt;c.wakeAt=null;
  if(type==='why'){
-  if(c.stage==='explained')return {ok:false,message:'Explanation already shown.'};patient(s,c,'Why was this treatment recommended?');c.barrier='Treatment understanding';c.status='engaged';c.stage='explained';
+  if(c.stage==='explained'){c.wakeAt=prevWake;return {ok:false,message:'Explanation already shown.'};}patient(s,c,'Why was this treatment recommended?');c.barrier='Treatment understanding';c.status='engaged';c.stage='explained';
   if(c.explanation){say(s,c,c.explanation,'agent',['note']);}
   else if(c.id==='alex'){say(s,c,'A crown can support and protect a tooth, but your synced note doesn’t include why Dr. Lee recommended it for your tooth. I don’t want to guess. I can arrange a discussion with the dentist before you decide.','agent',['crown','note']);}
   else{say(s,c,'Dr. Lee’s note records a crack in tooth 30 and recommends a crown to protect and support the remaining tooth. A crown covers the tooth. The team can discuss your questions before treatment; you decide whether to proceed.','agent',['crown','note']);}
   c.sources=c.explanation?['note']:['crown','note'];event(s,c,'Recommendation explained',c.id==='alex'?'Missing patient-specific rationale disclosed; offered a dentist discussion.':(c.explanation?'Used the existing clinician note and recorded care plan.':'Used the existing clinician note and practice-approved crown guide.'));
  }else if(type==='visit'){
-  patient(s,c,'What happens at the appointment?');c.status='engaged';c.stage='explained';say(s,c,`The team will review the planned treatment and answer your questions before beginning. Your sample treatment plan reserves ${c.duration||60} minutes with Dr. Lee. If you want to discuss the recommendation first, I can book a separate 30-minute discussion.`,'agent',['visit','schedule']);c.sources=['visit','schedule'];event(s,c,'Visit information shared','Practice guide and scheduling requirements referenced.');
+  if(c.visitInfo){c.wakeAt=prevWake;return {ok:false,message:'Visit information already shared.'};}c.visitInfo=true;
+  patient(s,c,'What happens at the appointment?');c.status='engaged';c.stage='explained';say(s,c,`The team will review the planned treatment and answer your questions before beginning. Your treatment plan reserves ${c.duration||60} minutes with Dr. Lee. If you want to discuss the recommendation first, I can book a separate 30-minute discussion.`,'agent',['visit','schedule']);c.sources=['visit','schedule'];event(s,c,'Visit information shared','Practice guide and scheduling requirements referenced.');
  }else if(type==='consult'){
-  patient(s,c,'I’d like to discuss this with the dentist');c.consult=true;c.stage='slots';c.status='engaged';say(s,c,'Of course. Here are 30-minute discussion appointments with Dr. Shah. This gives you time to ask questions before making a treatment decision.');event(s,c,'Discussion requested','Switched to consultation availability; treatment remains outstanding.');
+  patient(s,c,'I’d like to discuss this with the dentist');c.consult=true;c.stage='slots';c.status='engaged';say(s,c,'Of course. Here are 30-minute discussion appointments with Dr. Shah. This gives you time to ask questions before making a treatment decision.');event(s,c,'Discussion requested','Showing discussion times with Dr. Shah; treatment remains outstanding.');
  }else if(type==='slots'){
-  if(!c.appointment){patient(s,c,c.consult?'Find a discussion time':'I’m ready to find a time');c.status='engaged';}c.stage='slots';if(c.barrier==='Unknown')c.barrier='Scheduling';say(s,c,c.appointment?'Choose a replacement time. Your current appointment stays booked until you confirm the new one.':'These times match your current plan. Choose one and I’ll confirm it with the practice.');
+  patient(s,c,c.appointment?'I need a different time':c.consult?'Find a discussion time':'I’m ready to find a time');if(!c.appointment)c.status='engaged';c.stage='slots';if(c.barrier==='Unknown')c.barrier='Scheduling';say(s,c,c.appointment?'Choose a replacement time. Your current appointment stays booked until you confirm the new one.':'These times match your current plan. Choose one and I’ll confirm it with the practice.');
  }else if(type==='book'){
-  const choice=slots(s,c).find(x=>x.id===payload);if(!choice)return {ok:false,message:'That time is no longer available. Choose a refreshed option.'};
+  const choice=slots(s,c).find(x=>x.id===payload);if(!choice){c.wakeAt=prevWake;return {ok:false,message:'That time is no longer available. Choose a refreshed option.'};}
   const prior=c.appointment;patient(s,c,`Confirm ${fmtFull(choice.start)} at ${fmtTime(choice.start)}`);c.appointment=choice;c.status='booked';c.stage='booked';
-  say(s,c,`You’re booked for ${choice.kind.toLowerCase()} on ${fmtFull(choice.start)} at ${fmtTime(choice.start)} with ${choice.provider}, Cedar Dental. Allow ${choice.duration} minutes. You can change or cancel here.`);event(s,c,prior?'Appointment rescheduled':'Appointment booked',`${choice.provider} · ${choice.duration} minutes. Availability rechecked; ${prior?'original slot released after confirmation.':'scheduling follow-ups stopped.'}`);requestPayment(s,c);
+  if(prior&&c.billing)c.billing.payAtVisit=false;
+  say(s,c,`${choice.kind==='Discussion'?`You’re booked for a ${choice.duration}-minute discussion with ${choice.provider}`:`You’re booked for your ${spoken(c.treatment)} with ${choice.provider}`} on ${fmtFull(choice.start)} at ${fmtTime(choice.start)} at Cedar Dental.${choice.kind==='Discussion'?'':` Allow ${choice.duration} minutes.`} You can change or cancel here.`);event(s,c,prior?'Appointment rescheduled':'Appointment booked',`${choice.provider} · ${choice.duration} minutes. Availability rechecked; ${prior?'original slot released after confirmation.':'scheduling follow-ups stopped.'}`);requestPayment(s,c);
  }else if(type==='pause'){
   if(c.appointment)return {ok:false,message:'Cancel your appointment before pausing scheduling.'};patient(s,c,'Contact me next week');c.status='paused';c.stage='paused';c.wakeAt=s.now+7*DAY;while([0,6].includes(new Date(c.wakeAt).getUTCDay()))c.wakeAt+=DAY;
   say(s,c,`I’ll reconnect on ${fmtFull(c.wakeAt)}. No scheduling follow-ups until then. You can return here sooner if you’re ready.`);event(s,c,'Patient requested a pause',`One follow-up scheduled for ${fmtFull(c.wakeAt)}. Earlier reminders removed.`);
- }else return {ok:false,message:'Unknown action.'};
+ }else{c.wakeAt=prevWake;return {ok:false,message:'Unknown action.'};}
  return {ok:true,message:''};
 }
 export function advance(s){const due=s.cases.filter(c=>c.contact&&!c.appointment&&c.wakeAt).map(c=>c.wakeAt);s.now=due.length?Math.max(s.now+1,Math.min(...due)):s.now+DAY;processDue(s);return `Practice clock advanced to ${fmtFull(s.now)}.`;}

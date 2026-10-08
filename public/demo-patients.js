@@ -1,4 +1,4 @@
-import {seed,processDue,act,slots,DAY,attachBilling,cardEnding,PAY_METHODS,requestPayment} from './engine.js?v=9';
+import {seed,processDue,act,slots,DAY,attachBilling,cardEnding,PAY_METHODS,requestPayment} from './engine.js?v=10';
 
 // Additional fictional cases use the same workflow as the original demo.
 const samples=[
@@ -122,6 +122,8 @@ export function extendPatients(state){
   attachBilling(c);
   // Booked treatment visits get Clara’s payment request once (also for demos saved before payments moved to text).
   requestPayment(state,c);
+  // Earlier builds texted a payment request after a visit was already complete; remove it.
+  if(c.sourceStatus==='completed'&&c.billing?.requestedAt){c.messages=c.messages.filter(m=>!m.text.startsWith('Your estimated share for this visit'));c.events=c.events.filter(e=>e.title!=='Payment requested');delete c.billing.requestedAt;}
   if(!c.contactInfo&&CONTACT[c.id]){const [phone,bestTime,age,lastVisit]=CONTACT[c.id];c.contactInfo={phone,bestTime,age,lastVisit};}
   // History: Grace paid her share at the completed bite-adjustment visit.
   if(c.id==='grace'&&c.sourceStatus==='completed'&&!c.billing.payments.length&&c.appointment)c.billing.payments.push({id:'grace-pay1',at:c.appointment.start+c.appointment.duration*60000,amount:c.billing.share,method:`${PAY_METHODS.card} · Visa ending ${cardEnding(c)}`,receipt:`R-${c.chartId}-1`});
