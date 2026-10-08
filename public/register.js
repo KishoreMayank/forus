@@ -3,7 +3,7 @@ import {setupSourceData} from './source-data.js?v=6';
 import {setupCalendar} from './calendar.js?v=4';
 import {seed,act,advance,slots,statusLabel,nextAction,fmtFull,fmtDate,fmtTime,VERSION,knowledge,money,balance,paid,canTakePayment,cardEnding,PAY_METHODS,ledger} from './engine.js?v=6';
 
-import {extendPatients} from './demo-patients.js?v=9';
+import {extendPatients} from './demo-patients.js?v=10';
 
 const KEY='cedar-register-v1';
 function initialState(){
@@ -65,7 +65,11 @@ function renderRows(){
  }).join(''):`<div class="empty-register">No patients match this search. ${button('Clear filters','clear')}</div>`;
 
 }
-function overview(c){const noteParts=c.note.match(/^([^:]+):\s*([\s\S]+)$/);const note=noteParts?noteParts[2]:c.note;const provenance=noteParts?`${noteParts[1]} · `:'';return `<div class="record-body"><section class="chart-excerpt"><h3>From the chart</h3><p>${escape(note)}</p><div class="source-foot">${escape(provenance)}Patient chart · synced at demo start</div></section><section class="chart-status"><dl class="facts source-facts"><div><dt>Treatment history</dt><dd>${c.sourceStatus==='completed'?'Completion confirmed':'No completion recorded'}</dd></div><div><dt>Scheduling</dt><dd>${c.appointment?`${c.appointment.kind} · ${fmtFull(c.appointment.start)}, ${fmtTime(c.appointment.start)}`:'No appointment booked'}</dd></div><div><dt>Text messages</dt><dd>${c.contact?'Allowed':'Stopped by patient'}</dd></div></dl></section>${billingPanel(c)}<section><h3>Recent activity</h3><ol class="mini-events">${c.events.slice(-4).map(e=>`<li><time>${fmtDate(e.at)}<br>${fmtTime(e.at)}</time><div><strong>${e.title}</strong><p>${escape(e.detail)}</p></div></li>`).join('')}</ol><div class="next">Next: ${followUp(c)}.</div></section></div>`;}
+function overview(c){const noteParts=c.note.match(/^([^:]+):\s*([\s\S]+)$/);const note=noteParts?noteParts[2]:c.note;const provenance=noteParts?`${noteParts[1]} · `:'';return `<div class="record-body"><section class="chart-excerpt"><h3>From the chart</h3><p>${escape(note)}</p><div class="source-foot">${escape(provenance)}Patient chart · synced at demo start</div></section><section class="chart-status"><dl class="facts source-facts"><div><dt>Treatment history</dt><dd>${c.sourceStatus==='completed'?'Completion confirmed':'No completion recorded'}</dd></div><div><dt>Scheduling</dt><dd>${c.appointment?`${c.appointment.kind} · ${fmtFull(c.appointment.start)}, ${fmtTime(c.appointment.start)}`:'No appointment booked'}</dd></div><div><dt>Text messages</dt><dd>${c.contact?'Allowed':'Stopped by patient'}</dd></div></dl></section>${contactPanel(c)}${billingPanel(c)}<section><h3>Recent activity</h3><ol class="mini-events">${c.events.slice(-4).map(e=>`<li><time>${fmtDate(e.at)}<br>${fmtTime(e.at)}</time><div><strong>${e.title}</strong><p>${escape(e.detail)}</p></div></li>`).join('')}</ol><div class="next">Next: ${followUp(c)}.</div></section></div>`;}
+function contactPanel(c){
+ const k=c.contactInfo;if(!k)return '';
+ return `<section class="chart-status contact-panel"><dl class="facts source-facts"><div><dt>Phone</dt><dd>${escape(k.phone)}</dd></div><div><dt>Best time</dt><dd>${escape(k.bestTime)}</dd></div><div><dt>Age</dt><dd>${k.age}</dd></div><div><dt>Last visit</dt><dd>${escape(k.lastVisit)}</dd></div></dl></section>`;
+}
 function billingPanel(c){
  const b=c.billing;if(!b)return '';
  const due=balance(c),last=b.payments[b.payments.length-1];

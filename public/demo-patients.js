@@ -25,6 +25,22 @@ const plans={
  grace:['Bite adjustment · tooth 12',30,'Following the restoration of tooth 12, Dr. Lee requested a return visit to assess and adjust the bite. The follow-up visit is now recorded as completed.'],
  ben:['Night guard fitting',30,'Dr. Lee recommended a night guard and a fitting visit after documenting tooth wear. The patient chose not to proceed with this recommendation.']
 };
+// Fictional contact details from the chart (555-01xx numbers are reserved for fiction).
+const CONTACT={
+ maya:['(555) 014-3308','Weekdays 9–6 · any time',45,'Sep 24 · exam'],
+ jordan:['(555) 014-2291','Weekday afternoons',38,'Sep 30 · exam'],
+ alex:['(555) 014-7752','Weekdays after 4 PM',52,'Oct 2 · exam'],
+ priya:['(555) 014-1186','Mornings',29,'Sep 18 · cleaning'],
+ daniel:['(555) 014-6640','Around shifts · texts first',41,'Sep 22 · gum assessment'],
+ olivia:['(555) 014-3957','Weekdays 12–2',34,'Oct 1 · exam'],
+ marcus:['(555) 014-8823','Evenings',57,'Sep 26 · exam'],
+ sofia:['(555) 014-5410','Any time',47,'Sep 29 · crown prep'],
+ ethan:['(555) 014-2075','Weekday mornings',23,'Sep 21 · exam'],
+ nora:['(555) 014-9134','Later this month',62,'Aug 28 · gum therapy'],
+ grace:['(555) 014-4468','Weekdays 9–6',36,'Oct 9 · bite adjustment'],
+ ben:['(555) 014-7301','Evenings',44,'Sep 15 · exam'],
+ 'ella-cost':['(555) 014-6029','Weekdays after 3 PM',39,'Sep 25 · root canal']
+};
 function applyPlan(c){
  const plan=plans[c.id];if(!plan||c.planRevision===1)return;
  const [treatment,duration,rationale]=plan;
@@ -93,6 +109,7 @@ export function extendPatients(state){
  }
  for(const c of state.cases){
   attachBilling(c);
+  if(!c.contactInfo&&CONTACT[c.id]){const [phone,bestTime,age,lastVisit]=CONTACT[c.id];c.contactInfo={phone,bestTime,age,lastVisit};}
   // History: Grace paid her share at the completed bite-adjustment visit.
   if(c.id==='grace'&&c.sourceStatus==='completed'&&!c.billing.payments.length&&c.appointment)c.billing.payments.push({id:'grace-pay1',at:c.appointment.start+c.appointment.duration*60000,amount:c.billing.share,method:`${PAY_METHODS.card} · Visa ending ${cardEnding(c)}`,receipt:`R-${c.chartId}-1`});
   populateThread(c);
