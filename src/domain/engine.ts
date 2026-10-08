@@ -339,12 +339,12 @@ function handleReply(s: State, caseId: string, optionId: string) {
     case optionId === 'cost': {
       c.asked.push('cost');
       suppressPending(s, c, 'A person is handling a cost question; automated follow-up waits.');
-      send(s, c, k('cost'), [T('Good question. '), F('I can’t see insurance details', 'costs#cost'), T(', so I’ve asked our front desk to call you with an exact amount. You won’t hear from me in the meantime.')], 'Handed to front desk');
+      send(s, c, k('cost'), [T('Good question. '), F('Our front desk can check your insurance and give you an exact amount', 'costs#cost'), T(', so I’ve asked them to call you. You won’t hear from me in the meantime.')], 'Handed to front desk');
       c.hold = { to: 'front_desk', reason: 'Asked what it will cost', since: s.now };
       const h = { id: nextId(s, 'h'), caseId: c.id, at: s.now, to: 'front_desk' as const, routedTo: 'Front desk', question: 'How much will it cost?', status: 'open' as const };
       s.handoffs[h.id] = h;
       c.handoffId = h.id;
-      event(s, c, 'coordinator', 'handoff', 'Handed to front desk', 'Cost questions need insurance details, which aren’t connected. No outreach until someone has called.', { faq: ['costs#cost'] });
+      event(s, c, 'coordinator', 'handoff', 'Handed to front desk', 'Cost questions need a person to quote an exact amount. No outreach until someone has called.', { faq: ['costs#cost'] });
       break;
     }
     case optionId === 'consult_yes' || optionId === 'more_consult_times': {

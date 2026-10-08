@@ -51,11 +51,10 @@ function SyncStatus() {
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
   const sources: [string, string][] = [
-    ['Patient charts', 'Treatment plans, dentist notes, contact preferences'],
-    ['Treatment history', 'Completed procedures, so finished cases close'],
-    ['Scheduling', 'Open times · writes bookings patients choose'],
-    ['Text messages', `${PRACTICE.textNumber} · weekdays 9–6`],
-    ['Email', 'For patients who prefer email'],
+    ['Scheduling', 'Appointment book'],
+    ['Patient charts', 'Treatment plans and dentist notes'],
+    ['Treatment history', 'Completed procedures'],
+    ['Insurance & billing', 'Coverage and balances'],
   ];
   return (
     <div className="sync" ref={ref}>
