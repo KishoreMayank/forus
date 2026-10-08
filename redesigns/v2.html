@@ -109,6 +109,17 @@
   .has-panel .q .track { grid-column: 2; grid-row: 1 / 3; }
   .has-panel .q .nx, .has-panel .nx-h { display: none; }
   .q.sel { background: var(--teal-wash); }
+  .p-tabs { display: flex; gap: 2px; padding: 8px 14px 0; border-bottom: 1px solid var(--rule); }
+  .p-tabs button { padding: 7px 10px; font-size: 13px; font-weight: 500; color: var(--slate); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .p-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--teal); }
+  [data-ppane][hidden] { display: none; }
+  .m.draft .b { background: #fff; border: 1.5px dashed #9FC3C9; color: #2B3634; }
+  .m.draft .meta { color: var(--teal); display: flex; align-items: center; gap: 6px; }
+  .draft-k { font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; background: var(--teal-wash); color: var(--teal); border-radius: 4px; padding: 1px 6px; }
+  .draft-acts { display: flex; gap: 14px; margin-top: 6px; }
+  .draft-acts .link { font-size: 12px; }
+  .empty-c { color: var(--faint); font-size: 13px; padding: 4px 0; }
+
   .panel { position: sticky; top: 16px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; margin-top: 26px; max-height: calc(100vh - 32px); overflow: auto; }
   .panel .k { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
   .p-tx { color: var(--slate); font-size: 13px; }
@@ -215,7 +226,26 @@
 
 
   /* ── Integrations ─────────────────────────────────────── */
-  .ig-group { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); margin: 26px 0 8px; display: flex; align-items: center; }
+  .ig-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 22px; }
+  .ig-layout.has-panel { grid-template-columns: minmax(0, 1fr) 380px; }
+  .ig-layout .panel { margin-top: 0; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .tile { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 14px 16px 12px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+  .tile:hover { border-color: #C9D3D6; }
+  .tile.sel { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-wash); }
+  .tile-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .mono { width: 30px; height: 30px; border-radius: 8px; background: var(--wash); display: grid; place-items: center; font: 600 11px var(--mono); color: var(--slate); }
+  .ok { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--teal); }
+  .tile b { font-weight: 600; font-size: 14px; }
+  .tile small { color: var(--slate); font-size: 12.5px; }
+  .tile-foot { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--faint); }
+  .ig-rw { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 13px; }
+  .ig-rw li { padding: 1px 0; }
+  .ig-detail .ig-log { background: none; padding: 0; }
+  .ig-detail .ig-log li { padding: 4px 0; align-items: baseline; }
+  .ig-detail .ig-log time { width: 44px; flex: none; }
+  .ig-group { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); margin: 26px 0 0; display: flex; align-items: center; }
+  .ig-off { border-top: 1px solid var(--rule); margin-top: 8px; }
   .ig { border-top: 1px solid var(--rule); }
   .ig-row { display: grid; grid-template-columns: 260px minmax(0, 1fr) 150px; gap: 8px 24px; padding: 18px 0; border-bottom: 1px solid var(--rule); align-items: start; }
   .ig-id { display: flex; gap: 10px; align-items: baseline; }
@@ -249,7 +279,7 @@
   .pop-foot { border-top: 1px solid var(--rule); margin-top: 4px; display: block !important; padding: 10px 10px 6px !important; }
 
   @media (max-width: 900px) {
-    .ig-row { grid-template-columns: 1fr; }
+    .ig-layout.has-panel { grid-template-columns: 1fr; }
     .ig-cols { grid-template-columns: 1fr; gap: 8px; }
     .ig-st { align-items: flex-start; flex-direction: row; }
     .ig-log { grid-column: 1; }
@@ -281,7 +311,7 @@
 <header class="doc">
   <div>
     <h1>Treatment follow-up · v2</h1>
-    <p>Patients is grouped into in progress and booked. FAQs live as files. Each conversation shows which sentences came from the chart and which from an FAQ. Integrations splits into patient charts, treatment history, scheduling and texting. The scheduling calendar opens as a pop-up. Everything is clickable.</p>
+    <p>Patients is grouped into in progress and booked. FAQs live as files. Each conversation shows which sentences came from the chart and which from an FAQ. Integrations shows patient charts, treatment history, scheduling, texts and email as tiles. The scheduling calendar opens as a pop-up. Everything is clickable.</p>
   </div>
   <label><input type="checkbox" id="notesToggle" checked /> Show notes</label>
 </header>
@@ -302,6 +332,7 @@
           <li><span class="dot"></span><b>Treatment history</b><small>Completed procedures, so finished cases close</small></li>
           <li><span class="dot"></span><b>Scheduling</b><small>Open times · writes bookings patients choose</small></li>
           <li><span class="dot"></span><b>Text messages</b><small>(555) 010-4400 · weekdays 9–6</small></li>
+          <li><span class="dot"></span><b>Email</b><small>For patients who prefer email</small></li>
           <li class="pop-foot"><button data-view="integrations" class="link">Manage integrations →</button></li>
         </ul>
       </div>
@@ -335,13 +366,18 @@
             </div>
             <button class="x" id="pClose" aria-label="Close patient">×</button>
           </div>
-          <dl class="p-info" id="pInfo"></dl>
-          <div class="p-sec" id="pNext"></div>
-          <div class="p-sec">
-            <div class="k">Conversation</div>
-            <div class="convo" id="pConvo"></div>
+          <div class="p-tabs" role="tablist">
+            <button role="tab" data-ptab="convo" aria-selected="true">Conversation</button>
+            <button role="tab" data-ptab="info" aria-selected="false">Patient</button>
           </div>
-          <div class="p-sec" id="pSide"></div>
+          <div data-ppane="convo">
+            <div class="p-sec"><div class="convo" id="pConvo"></div></div>
+            <div class="p-sec" id="pSide"></div>
+          </div>
+          <div data-ppane="info" hidden>
+            <dl class="p-info" id="pInfo"></dl>
+            <div class="p-sec" id="pRec"></div>
+          </div>
         </aside>
       </div>
     </section>
@@ -380,70 +416,51 @@
     <section class="view" id="v-integrations" hidden>
       <div class="view-head">
         <h2>Integrations</h2>
-        <span class="sub">Where patients, appointments and messages come from</span>
+        <span class="sub">5 connected · everything synced 9:04 AM</span>
       </div>
 
-      <div class="ig-group">Connected <span class="mk">9</span></div>
-      <ul class="ig">
-        <li class="ig-row">
-          <div class="ig-id"><span class="dot"></span><div><b>Patient charts</b><small>Where patients come from</small></div></div>
-          <div class="ig-cols">
-            <div><p class="lbl">Reads</p><p>Treatment plans with nothing booked · the dentist&rsquo;s note for each · contact details and preferences</p></div>
-            <div><p class="lbl">Writes <span class="mk">10</span></p><p class="muted">Nothing</p></div>
+      <div class="ig-layout" id="igLayout">
+        <div>
+          <div class="tiles" id="igTiles">
+            <button class="tile" data-ig="charts"><span class="tile-top"><span class="mono">PC</span><span class="ok"><span class="dot"></span>Connected</span></span><b>Patient charts</b><small>Who needs follow-up <span class="mk">9</span></small><span class="tile-foot">2 new plans today</span></button>
+            <button class="tile" data-ig="history"><span class="tile-top"><span class="mono">TH</span><span class="ok"><span class="dot"></span>Connected</span></span><b>Treatment history</b><small>Whether treatment is done</small><span class="tile-foot">1 case closed today</span></button>
+            <button class="tile" data-ig="scheduling"><span class="tile-top"><span class="mono">SC</span><span class="ok"><span class="dot"></span>Connected</span></span><b>Scheduling</b><small>When patients can come in</small><span class="tile-foot">3 booked this month</span></button>
+            <button class="tile" data-ig="sms"><span class="tile-top"><span class="mono">TX</span><span class="ok"><span class="dot"></span>Connected</span></span><b>Text messages</b><small>(555) 010-4400</small><span class="tile-foot">Last sent 9:52 AM</span></button>
+            <button class="tile" data-ig="email"><span class="tile-top"><span class="mono">EM</span><span class="ok"><span class="dot"></span>Connected</span></span><b>Email</b><small>hello@harbordental.example</small><span class="tile-foot">For 1 patient who prefers email</span></button>
           </div>
-          <div class="ig-st"><span>Synced 9:04 AM</span><button class="btn">Sync now</button></div>
-          <ol class="ig-log">
-            <li><time>9:04</time>Found 2 new treatment plans (Nora Kim, Leo Brandt) <span class="mk">11</span></li>
-            <li><time>8:49</time>No changes</li>
-          </ol>
-        </li>
-        <li class="ig-row">
-          <div class="ig-id"><span class="dot"></span><div><b>Treatment history</b><small>How we know a case is finished</small></div></div>
-          <div class="ig-cols">
-            <div><p class="lbl">Reads</p><p>Completed procedures · past visits</p></div>
-            <div><p class="lbl">Writes</p><p class="muted">Nothing</p></div>
-          </div>
-          <div class="ig-st"><span>Synced 9:04 AM</span><button class="btn">Sync now</button></div>
-          <ol class="ig-log">
-            <li><time>9:04</time>Crown seated for Grace Park. Follow-up closed</li>
-          </ol>
-        </li>
-        <li class="ig-row">
-          <div class="ig-id"><span class="dot"></span><div><b>Scheduling</b><small>Appointment book for Dr. Shah &amp; Dr. Bell</small></div></div>
-          <div class="ig-cols">
-            <div><p class="lbl">Reads</p><p>Open times · existing appointments · cancellations</p></div>
-            <div><p class="lbl">Writes</p><p>Appointments patients choose · cancellations they ask for</p></div>
-          </div>
-          <div class="ig-st"><span>Synced 9:04 AM</span><button class="btn" data-open-cal>Open calendar <span class="mk">13</span></button></div>
-          <ol class="ig-log">
-            <li><time>Fri</time>Booked Sam Patel · Fri 16 Oct, 10:00 · Dr. Shah</li>
-          </ol>
-        </li>
-        <li class="ig-row">
-          <div class="ig-id"><span class="dot"></span><div><b>Text messages</b><small>(555) 010-4400</small></div></div>
-          <div class="ig-cols">
-            <div><p class="lbl">Reads</p><p>Patient replies · STOP and START</p></div>
-            <div><p class="lbl">Sends</p><p>Weekdays 9–6 · a first text and up to 2 follow-ups</p></div>
-          </div>
-          <div class="ig-st"><span>Last sent 9:37 AM</span><button class="btn">Settings</button></div>
-        </li>
-      </ul>
 
-      <div class="ig-group">Not connected <span class="mk">12</span></div>
-      <ul class="ig ig-off">
-        <li class="ig-mini"><div><b>Email</b><small>For patients who prefer email over text</small></div><button class="btn">Connect</button></li>
-        <li class="ig-mini"><div><b>Insurance eligibility</b><small>Needed before costs.md can answer questions about cost</small></div><button class="btn">Connect</button></li>
-        <li class="ig-mini"><div><b>Phone calls</b><small>Not available yet</small></div><span class="soon">Planned</span></li>
-      </ul>
+          <div class="ig-group">Not connected <span class="mk">12</span></div>
+          <ul class="ig-off">
+            <li class="ig-mini"><div><b>Insurance eligibility</b><small>Needed before costs.md can answer questions about cost</small></div><button class="btn">Connect</button></li>
+            <li class="ig-mini"><div><b>Phone calls</b><small>Not available yet</small></div><span class="soon">Planned</span></li>
+          </ul>
 
-      <div class="never">
-        <div class="ig-group" style="margin:0 0 6px">Never, whatever is connected</div>
-        <ul>
-          <li>Changes a treatment plan or clinical note</li>
-          <li>Answers a clinical question the chart doesn&rsquo;t</li>
-          <li>Books outside the scheduling rules</li>
-          <li>Texts anyone who replied STOP</li>
-        </ul>
+          <div class="never">
+            <div class="ig-group" style="margin:0 0 6px">Never, whatever is connected</div>
+            <ul>
+              <li>Changes a treatment plan or clinical note</li>
+              <li>Answers a clinical question the chart doesn&rsquo;t</li>
+              <li>Books outside the scheduling rules</li>
+              <li>Messages anyone who opted out</li>
+            </ul>
+          </div>
+        </div>
+
+        <aside class="panel ig-detail" id="igDetail" hidden aria-label="Integration detail">
+          <div class="panel-head">
+            <div><h3 id="igName"></h3><div class="p-tx" id="igSub"></div></div>
+            <button class="x" id="igClose" aria-label="Close">×</button>
+          </div>
+          <div class="p-sec ig-rw">
+            <div><div class="k">Reads</div><ul id="igReads"></ul></div>
+            <div><div class="k">Writes <span class="mk">10</span></div><ul id="igWrites"></ul></div>
+          </div>
+          <div class="p-sec" id="igAction"></div>
+          <div class="p-sec">
+            <div class="k">Activity <span class="mk">11</span></div>
+            <ol class="ig-log" id="igLog"></ol>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -484,10 +501,10 @@
     <li><span class="mk">8</span><span><b>Plain markdown files.</b> <span class="t">Anyone at the desk can edit them. A line starting with &ldquo;→ Ask the dentist&rdquo; is a rule: the tool won&rsquo;t answer that question itself. It offers a discussion instead.</span></span></li>
   </ol>
   <ol class="notes" data-for="integrations" hidden>
-    <li><span class="mk">9</span><span><b>Three practice systems, named for what staff know.</b> <span class="t">Patient charts, treatment history and scheduling each answer one question: who needs follow-up, is it finished, and when can they come in. Texting is how the tool reaches patients.</span></span></li>
-    <li><span class="mk">10</span><span><b>&ldquo;Writes: Nothing&rdquo; is said out loud.</b> <span class="t">Charts and history are read-only. Only Scheduling writes, and only the appointments patients choose. That&rsquo;s the line an owner checks before signing off.</span></span></li>
-    <li><span class="mk">11</span><span><b>A sync log in plain words.</b> <span class="t">&ldquo;Found 2 new treatment plans&rdquo; ties the connection to the two new patients at the top of Patients, so staff can see where new patients came from.</span></span></li>
-    <li><span class="mk">12</span><span><b>Each missing integration says what it would unlock.</b> <span class="t">Insurance is linked to the costs.md draft, which explains why that FAQ isn&rsquo;t live yet. Phone calls are marked planned, not offered.</span></span></li>
+    <li><span class="mk">9</span><span><b>One tile per system, one line each.</b> <span class="t">A tile says what the system answers for the practice (who needs follow-up, whether treatment is done, when patients can come in) and one live number. Detail is a click away.</span></span></li>
+    <li><span class="mk">10</span><span><b>Reads and writes, only when you ask.</b> <span class="t">The detail panel pushes the tiles over, like Patients. Charts and history say &ldquo;Writes: Nothing&rdquo;, so it&rsquo;s easy to see that only scheduling and messaging ever write.</span></span></li>
+    <li><span class="mk">11</span><span><b>Activity in plain words.</b> <span class="t">Each system&rsquo;s log names the patients it affected, so &ldquo;Found 2 new treatment plans&rdquo; ties directly to the new rows on Patients.</span></span></li>
+    <li><span class="mk">12</span><span><b>Not connected stays small.</b> <span class="t">Insurance says what it would unlock (the costs.md draft). Phone calls are marked planned, not offered.</span></span></li>
     <li><span class="mk">13</span><span><b>The calendar belongs to Scheduling.</b> <span class="t">It opens as a pop-up from the Scheduling row, or from the Booked group on Patients. It&rsquo;s a read-only view of the real appointment book, with follow-up bookings coloured.</span></span></li>
     <li><span class="mk">14</span><span><b>One filter, nothing else.</b> <span class="t">&ldquo;Booked by follow-up&rdquo; fades the rest of the book. A &ldquo;New&rdquo; tag marks bookings made since you last looked, so a busy desk notices them without a notification.</span></span></li>
   </ol>
@@ -496,10 +513,10 @@
 <script>
 /* ── data ───────────────────────────────────────────── */
 const patients = {
-  maya:   { name: 'Maya Chen', tx: 'Crown', tooth: '#30', dr: 'Dr. Shah', date: '28 Sep', stage: 2, stageText: 'Asked why she needs it', next: 'Thu 15 Oct', nextText: 'follow up if no reply' },
+  maya:   { name: 'Maya Chen', tx: 'Crown', tooth: '#30', dr: 'Dr. Shah', date: '28 Sep', stage: 2, stageText: 'Checking times with work', next: 'Thu 15 Oct', nextText: 'follow up if no reply' },
   elena:  { name: 'Elena Ruiz', tx: 'Crown', tooth: '#19', dr: 'Dr. Bell', date: '24 Sep', stage: 2, tone: 'amber', stageText: 'Question for Dr. Bell', next: 'Thu 22 Oct', nextText: 'call with Dr. Bell' },
   aisha:  { name: 'Aisha Rahman', tx: 'Filling', tooth: '#31', dr: 'Dr. Shah', date: '16 Sep', stage: 2, tone: 'paused', stageText: 'Paused at her request', next: 'Thu 22 Oct', nextText: 'check back' },
-  daniel: { name: 'Daniel Okafor', tx: 'Crown', tooth: '#3', dr: 'Dr. Shah', date: '21 Sep', stage: 1, stageText: 'No reply yet', next: 'Thu 15 Oct', nextText: 'follow up' },
+  daniel: { name: 'Daniel Okafor', tx: 'Crown', tooth: '#3', dr: 'Dr. Shah', date: '21 Sep', stage: 1, stageText: 'Choosing an afternoon', next: 'Thu 15 Oct', nextText: 'follow up' },
   james:  { name: 'James Whitfield', tx: 'Root canal', tooth: '#18', dr: 'Dr. Bell', date: '14 Sep', stage: 1, stageText: 'No reply to 2 texts', next: 'Today', nextText: 'last follow-up' },
   nora:   { name: 'Nora Kim', tx: 'Deep cleaning', tooth: '#29', dr: 'Dr. Bell', date: '29 Sep', stage: 0, stageText: 'Found this morning', next: 'Today 10:00', nextText: 'first text' },
   leo:    { name: 'Leo Brandt', tx: 'Implant', tooth: '#15', dr: 'Dr. Shah', date: '30 Sep', stage: 0, stageText: 'Found this morning', next: 'Tue 13 Oct', nextText: 'first text' },
@@ -544,56 +561,120 @@ document.getElementById('notesToggle').addEventListener('change', (e) => documen
 /* ── patient panel ──────────────────────────────────── */
 const C = (t) => `<span class="src-chart" data-k="chart">${t}</span>`;
 const F = (t) => `<span class="src-faq" data-k="faq">${t}</span>`;
+// Each conversation: messages so far, the drafted next message, and the sources it drew on.
+const PT = (t) => ['pt', t[0], t[1]];
+const CO = (t) => ['co', t[0], t[1]];
 const convos = {
   maya: {
     msgs: [
-      ['co', 'Mon 9:00', `Hi Maya, this is Harbor Dental. At your ${C('28 Sep visit, Dr. Shah recommended a crown for your lower right back tooth (#30)')}. We haven’t seen it on the schedule yet. Would you like to book a time, or do you have questions first?`],
-      ['pt', 'Mon 9:36', 'Why do I need a crown?'],
-      ['co', 'Mon 9:37', `${C('Dr. Shah noted a large, older filling and a crack line in one of the cusps, and that it’s sensitive when you chew.')} ${F('A crown is a cap that covers the whole tooth, so biting pressure is spread evenly instead of landing on the weakened walls.')}<br><br>Would you like to see some appointment times?`],
+      CO(['Mon 9:00', `Hi Maya, this is Harbor Dental. At your ${C('28 Sep visit, Dr. Shah recommended a crown for your lower right back tooth')}. We haven’t seen it on the schedule yet. Would you like to book a time, or do you have questions first?`]),
+      PT(['Mon 9:36', 'Why do I need a crown?']),
+      CO(['Mon 9:37', `${C('Dr. Shah noted a large, older filling and a crack line in one of the cusps, and that it’s sensitive when you chew.')} ${F('A crown is a cap that covers the whole tooth, so biting pressure is spread evenly instead of landing on the weakened walls.')}`]),
+      PT(['Mon 9:41', 'How long does a crown last?']),
+      CO(['Mon 9:41', `${F('Most crowns last 10–15 years with normal brushing, flossing and check-ups.')} Would you like to see some times?`]),
+      PT(['Mon 9:44', 'Sure, mornings are best']),
+      CO(['Mon 9:44', `Here are the next morning openings with Dr. Shah. ${F('Plan for about 90 minutes')}:<br>• Thu 15 Oct, 8:00<br>• Fri 16 Oct, 10:00<br>• Mon 19 Oct, 8:00`]),
+      PT(['Mon 9:52', 'Let me check with work and get back to you']),
+      CO(['Mon 9:52', 'No problem. Just reply with the time that works.']),
     ],
-    chart: { title: 'Chart · Dr. Shah · 28 Sep', text: '#30: <mark>large MOD amalgam (~15 yrs) with visible fracture line on DL cusp. Pt reports sensitivity on chewing.</mark> Recommend full-coverage crown to protect remaining tooth structure.', foot: 'Treatment plan: D2740 Crown, porcelain/ceramic' },
-    faq: { title: 'crowns.md › Why do I need a crown?', text: '<mark>A crown is a cap that covers the whole tooth, so biting pressure is spread evenly</mark> instead of on weakened walls.', foot: 'Used in 4 replies this week' },
-    next: '<b>Thu 15 Oct, 10:00</b><br>Follow up by text if Maya hasn’t replied (1 of 2).',
+    draft: { when: 'Thu 15 Oct, 10:00', cond: 'if Maya hasn’t replied', text: `Hi Maya, just checking in. Fri 16 Oct at 10:00 and Mon 19 Oct at 8:00 are still open with Dr. Shah. Want me to hold one?` },
+    chart: { title: 'Chart · Dr. Shah · 28 Sep', text: '#30: <mark>large MOD amalgam (~15 yrs) with visible fracture line on DL cusp. Pt reports sensitivity on chewing.</mark> Recommend full-coverage crown.', foot: 'Treatment plan: D2740 Crown' },
+    faq: [['crowns.md › Why do I need a crown?', '<mark>A crown is a cap that covers the whole tooth</mark>…'], ['crowns.md › How long does a crown last?', '<mark>Most last 10–15 years</mark>…'], ['scheduling.md › Appointment lengths', '<mark>Crown: 90 minutes</mark>']],
+  },
+  daniel: {
+    msgs: [
+      CO(['Mon 9:00', `Hi Daniel, this is Harbor Dental. At your ${C('21 Sep visit, Dr. Shah recommended a crown for the tooth that had a root canal last year')}. Would you like to book a time, or do you have questions first?`]),
+      PT(['Mon 12:15', 'What happens at the appointment?']),
+      CO(['Mon 12:16', `${F('The first visit takes about 90 minutes: the tooth is numbed, shaped, scanned, and you leave with a temporary crown. A short second visit about two weeks later fits the permanent one.')}`]),
+      PT(['Mon 12:20', 'Ok. Can you do afternoons?']),
+      CO(['Mon 12:20', `Yes. Dr. Shah has:<br>• Tue 13 Oct, 3:30<br>• Wed 14 Oct, 1:30<br>• Fri 16 Oct, 3:30`]),
+    ],
+    draft: { when: 'Thu 15 Oct, 10:00', cond: 'if Daniel hasn’t picked a time', text: `Hi Daniel, Fri 16 Oct at 3:30 is still open with Dr. Shah. Should I book it for you?` },
+    chart: { title: 'Chart · Dr. Shah · 21 Sep', text: '#3: RCT completed 02/2025, large composite. <mark>Recommend crown to protect RCT-treated tooth.</mark>', foot: 'Treatment plan: D2740 Crown' },
+    faq: [['the-appointment.md › What happens at the appointment?', '<mark>The first visit takes about 90 minutes</mark>…']],
+  },
+  james: {
+    msgs: [
+      CO(['Mon 5 Oct', `Hi James, this is Harbor Dental. At your ${C('14 Sep visit, Dr. Bell recommended a root canal for a tooth that hurts when you bite')}. We haven’t seen it on the schedule yet. Would you like to book a time?`]),
+      CO(['Thu 8 Oct', 'Hi James, just checking in about the root canal Dr. Bell recommended. I can share a few times, or answer any questions.']),
+    ],
+    draft: { when: 'Today, 10:00', cond: 'last follow-up (2 of 2)', text: `Hi James, this is our last reminder about the root canal Dr. Bell recommended. ${F('It removes the inflamed nerve so the tooth can be kept.')} Reply anytime if you’d like to book.` },
+    chart: { title: 'Chart · Dr. Bell · 14 Sep', text: '#18: <mark>deep crack into pulp, symptomatic to bite.</mark> Recommend RCT.', foot: 'Treatment plan: D3330 Root canal, molar' },
+    faq: [['root-canals.md › Why do I need a root canal?', '<mark>removes the inflamed nerve</mark>…']],
   },
   elena: {
     msgs: [
-      ['pt', 'Thu 9:38', 'Could a filling work instead?'],
-      ['co', 'Thu 9:39', `That’s a good question for Dr. Bell directly. ${C('Dr. Bell’s note explains why a crown was recommended')}, but it doesn’t discuss other options for your tooth, and ${F('I don’t want to guess about something this specific to you')}. I can set up a 20-minute call with Dr. Bell. Would that help?`],
-      ['pt', 'Thu 9:41', 'Yes please'],
-      ['co', 'Thu 9:42', 'Booked: a 20-minute call with Dr. Bell on Thu 22 Oct at 12:30. I’ve sent your question to the dental team so they’re ready.'],
+      CO(['Mon 9:00', `Hi Elena, this is Harbor Dental. At your ${C('24 Sep visit, Dr. Bell recommended a crown for your lower left back tooth')}. Would you like to book a time, or do you have questions first?`]),
+      PT(['Mon 18:02', 'Why do I need a crown?']),
+      CO(['Tue 9:00', `${C('Dr. Bell noted that the large filling is breaking down, with new decay along one edge.')} ${F('A crown rebuilds and protects the tooth.')}`]),
+      PT(['Thu 9:38', 'Could a filling work instead?']),
+      CO(['Thu 9:39', `That’s a good question for Dr. Bell directly. ${C('Dr. Bell’s note explains why a crown was recommended')}, but it doesn’t discuss other options, and ${F('I don’t want to guess about something this specific to you')}. Would a 20-minute call with Dr. Bell help?`]),
+      PT(['Thu 9:41', 'Yes please']),
+      CO(['Thu 9:42', 'Booked: a 20-minute call with Dr. Bell on Thu 22 Oct at 12:30. I’ve sent your question to the dental team so they’re ready.']),
     ],
-    chart: { title: 'Chart · Dr. Bell · 24 Sep', text: '#19: <mark>large failing composite, recurrent decay at distal margin, ML cusp undermined. Recommend crown.</mark> Pt hesitant.', foot: 'Doesn’t mention alternatives' },
-    faq: { title: 'crowns.md › Could a filling work instead?', text: '<mark>→ Ask the dentist.</mark> Don’t answer from this file.', foot: 'Rule: offer a dentist discussion' },
-    next: '<b>Thu 22 Oct, 12:30</b><br>Call with Dr. Bell. Question already shared with the team.',
+    draft: { when: 'Wed 21 Oct, 17:00', cond: 'reminder', text: 'Reminder: your call with Dr. Bell is tomorrow at 12:30. Reply here if you need a different time.' },
+    chart: { title: 'Chart · Dr. Bell · 24 Sep', text: '#19: <mark>large failing composite, recurrent decay at distal margin.</mark> Recommend crown. Pt hesitant.', foot: 'Doesn’t mention alternatives' },
+    faq: [['crowns.md › Could a filling work instead?', '<mark>→ Ask the dentist.</mark>']],
+  },
+  aisha: {
+    msgs: [
+      CO(['Wed 30 Sep', `Hi Aisha, this is Harbor Dental. At your ${C('16 Sep visit, Dr. Shah recommended two small fillings')}. Would you like to book a time?`]),
+      PT(['Thu 1 Oct', 'I have exams until the 21st. Can you check back after that?']),
+      CO(['Thu 1 Oct', 'Of course. I’ll check back on Thu 22 Oct, and you won’t hear from us before then. Good luck with your exams!']),
+    ],
+    draft: { when: 'Thu 22 Oct, 15:00', cond: 'after her exams, as she asked', text: `Hi Aisha, hope exams went well! Dr. Shah has afternoon openings for your fillings (${F('about 45 minutes')}): Fri 23 Oct at 3:30 or Mon 26 Oct at 1:30. Want one?` },
+    chart: { title: 'Chart · Dr. Shah · 16 Sep', text: '#30, #31: <mark>two small interproximal cavities.</mark> Recommend composite fillings.', foot: 'Treatment plan: D2391 Composite × 2' },
+    faq: [['scheduling.md › Appointment lengths', '<mark>Filling: 45 minutes</mark>']],
+  },
+  nora: {
+    msgs: [],
+    draft: { when: 'Today, 10:00', cond: 'first message', text: `Hi Nora, this is Harbor Dental. At your ${C('29 Sep cleaning, Dr. Bell recommended a deep cleaning')}. ${F('It cleans below the gumline, where a regular cleaning can’t reach, so your gums can heal.')} Would you like to book a time?` },
+    chart: { title: 'Chart · Dr. Bell · 29 Sep', text: 'Perio charting: <mark>5–6 mm pockets UL and LR, bleeding on probing.</mark> Recommend SRP, 2 quadrants.', foot: 'Treatment plan: D4341 Scaling & root planing' },
+    faq: [['deep-cleaning.md › What is a deep cleaning?', '<mark>It cleans below the gumline</mark>…']],
+  },
+  leo: {
+    msgs: [],
+    draft: { when: 'Tue 13 Oct, 9:00', cond: 'first message, by email (his preference)', text: `Hi Leo, this is Harbor Dental. At your ${C('30 Sep consult, Dr. Shah recommended an implant to replace your upper left back tooth')}. Would you like to book a time to get started, or do you have questions first?` },
+    chart: { title: 'Chart · Dr. Shah · 30 Sep', text: '#15 missing since 2024. CBCT reviewed. <mark>Recommend implant placement.</mark>', foot: 'Treatment plan: D6010 Implant' },
+    faq: [],
+  },
+  robert: {
+    msgs: [
+      CO(['Mon 5 Oct', `Hi Robert, this is Harbor Dental. At your ${C('18 Sep visit, Dr. Shah recommended a bridge to replace your missing upper left tooth')}. Would you like to book a time?`]),
+      PT(['Tue 6 Oct', 'How long does it take?']),
+      CO(['Tue 6 Oct', `${F('Plan for about 2 hours for the first visit.')} Dr. Shah has:<br>• Thu 15 Oct, 1:30<br>• Mon 19 Oct, 10:00`]),
+      PT(['Tue 6 Oct', 'Thursday works']),
+      CO(['Tue 6 Oct', 'You’re booked: Thu 15 Oct at 1:30 with Dr. Shah. I’ll send a reminder the day before.']),
+    ],
+    draft: { when: 'Wed 14 Oct, 17:00', cond: 'reminder', text: 'Reminder: your appointment with Dr. Shah is tomorrow at 1:30 (about 2 hours). Reply here if anything changes.' },
+    chart: { title: 'Chart · Dr. Shah · 18 Sep', text: '#14 missing; #13, #15 crowned. <mark>Recommend 3-unit bridge.</mark>', foot: 'Treatment plan: D6240 Bridge' },
+    faq: [['scheduling.md › Appointment lengths', '<mark>Bridge: 2 hours</mark>']],
+  },
+  sam: {
+    msgs: [
+      CO(['Fri 9 Oct', `Hi Sam, this is Harbor Dental. At your ${C('22 Sep visit, Dr. Shah recommended a filling')}. Would you like to book a time?`]),
+      PT(['Mon 12 Oct', 'Yes, any chance of a Friday morning?']),
+      CO(['Mon 12 Oct', `Dr. Shah has Fri 16 Oct at 10:00 (${F('about 45 minutes')}). Shall I book it?`]),
+      PT(['Mon 12 Oct', 'Perfect']),
+      CO(['Mon 12 Oct', 'You’re booked: Fri 16 Oct at 10:00 with Dr. Shah. I’ll send a reminder the day before.']),
+    ],
+    draft: { when: 'Thu 15 Oct, 17:00', cond: 'reminder', text: 'Reminder: your filling with Dr. Shah is tomorrow at 10:00. Reply here if anything changes.' },
+    chart: { title: 'Chart · Dr. Shah · 22 Sep', text: '#4: <mark>cavity on the side of the tooth.</mark> Recommend composite filling.', foot: 'Treatment plan: D2392 Composite' },
+    faq: [['scheduling.md › Appointment lengths', '<mark>Filling: 45 minutes</mark>']],
+  },
+  hana: {
+    msgs: [
+      CO(['Fri 9 Oct', `Hi Hana, this is Harbor Dental. At your ${C('25 Sep cleaning, Dr. Bell recommended a deep cleaning')}. Would you like to book a time?`]),
+      PT(['Fri 9 Oct', 'What’s a deep cleaning?']),
+      CO(['Fri 9 Oct', `${C('Dr. Bell noted some deeper gum pockets on the lower left.')} ${F('A deep cleaning cleans below the gumline, where a regular cleaning can’t reach, so the gums can heal.')}`]),
+      PT(['Fri 9 Oct', 'Ok. Early morning?']),
+      CO(['Fri 9 Oct', 'You’re booked: Tue 20 Oct at 8:00 with the hygiene team. I’ll send a reminder the day before.']),
+    ],
+    draft: { when: 'Mon 19 Oct, 17:00', cond: 'reminder', text: 'Reminder: your deep cleaning is tomorrow at 8:00 (about 90 minutes). Reply here if anything changes.' },
+    chart: { title: 'Chart · Dr. Bell · 25 Sep', text: 'Perio: <mark>5 mm pockets LL, light bleeding.</mark> Recommend SRP.', foot: 'Treatment plan: D4341 Scaling & root planing' },
+    faq: [['deep-cleaning.md › What is a deep cleaning?', '<mark>cleans below the gumline</mark>…']],
   },
 };
-const TX = {
-  'Crown': { a: 'a crown', code: 'D2740 Crown', len: '90 minutes', file: 'crowns.md' },
-  'Filling': { a: 'a filling', code: 'D2392 Composite, 2 surfaces', len: '45 minutes', file: 'fillings.md' },
-  'Root canal': { a: 'a root canal', code: 'D3330 Root canal, molar', len: '90 minutes', file: 'root-canals.md' },
-  'Deep cleaning': { a: 'a deep cleaning', code: 'D4341 Scaling & root planing', len: '90 minutes', file: 'deep-cleaning.md' },
-  'Implant': { a: 'an implant', code: 'D6010 Implant placement', len: '2 hours', file: 'implants.md' },
-  'Bridge': { a: 'a bridge', code: 'D6240 Bridge, 3 units', len: '2 hours', file: 'bridges.md' },
-};
-function generic(p) {
-  const t = TX[p.tx];
-  if (p.stage === 3) return {
-    msgs: [
-      ['co', 'Earlier', `Hi ${p.name.split(' ')[0]}, this is Harbor Dental. ${C(`At your ${p.date} visit, ${p.dr} recommended ${t.a}`)}. Would you like to book a time?`],
-      ['pt', 'Earlier', 'Yes please'],
-      ['co', 'Earlier', `You’re booked: ${p.stageText.replace('Booked ', '')} with ${p.dr}. ${F(`Plan for about ${t.len}.`)} I’ll send a reminder the day before.`],
-    ],
-    chart: { title: `Chart · ${p.dr} · ${p.date}`, text: `${p.tooth}: <mark>Recommend ${p.tx.toLowerCase()}.</mark>`, foot: `Treatment plan: ${t.code}` },
-    faq: { title: 'scheduling.md › Appointment lengths', text: `<mark>${p.tx}: ${t.len} with the treating dentist</mark>`, foot: 'Scheduling rule' },
-    next: `<b>${p.next}</b><br>Send a reminder. Nothing else until the crown is charted as seated.`,
-  };
-  return {
-    msgs: [['co', p.stage === 0 ? 'Scheduled' : 'Mon 9:00', `Hi ${p.name.split(' ')[0]}, this is Harbor Dental. ${C(`At your ${p.date} visit, ${p.dr} recommended ${t.a}`)}. We haven’t seen it on the schedule yet. Would you like to book a time, or do you have questions first?`]],
-    chart: { title: `Chart · ${p.dr} · ${p.date}`, text: `${p.tooth}: <mark>Recommend ${p.tx.toLowerCase()}.</mark>`, foot: `Treatment plan: ${t.code}` },
-    faq: null,
-    next: `<b>${p.next}</b><br>${p.nextText[0].toUpperCase() + p.nextText.slice(1)}.`,
-  };
-}
 
 const panel = document.getElementById('panel'), ptLayout = document.getElementById('ptLayout');
 const PROFILE = {
@@ -603,7 +684,7 @@ const PROFILE = {
   james: ['61', '(555) 014-9013', 'Texts, weekdays 9–6', 'Mornings', '14 Sep · exam'],
   aisha: ['29', '(555) 014-5562', 'Texts, after 3 PM', 'Afternoons', '16 Sep · exam'],
   nora: ['34', '(555) 014-8812', 'Texts, weekdays 9–6', 'Any time', '29 Sep · cleaning'],
-  leo: ['57', '(555) 014-2290', 'Texts, weekdays 9–6', 'Mornings', '30 Sep · consult'],
+  leo: ['57', 'leo.brandt@example.com', 'Email', 'Mornings', '30 Sep · consult'],
   robert: ['67', '(555) 014-1187', 'Texts, weekdays 9–6', 'Any time', '18 Sep · exam'],
   sam: ['41', '(555) 014-6604', 'Texts, weekdays 9–6', 'Mornings', '22 Sep · exam'],
   hana: ['33', '(555) 014-7351', 'Texts, weekdays 9–6', 'Mornings', '25 Sep · cleaning'],
@@ -611,26 +692,36 @@ const PROFILE = {
 let openId = null;
 function openPanel(id) {
   const p = patients[id];
-  const c = convos[id] || generic(p);
+  const c = convos[id];
   const [age, phone, contact, times, last] = PROFILE[id];
+  const first = p.name.split(' ')[0];
   openId = id;
   document.getElementById('pName').textContent = p.name;
-  document.getElementById('pChart').textContent = `${p.tx} · ${p.dr} · recommended ${p.date}`;
+  document.getElementById('pChart').textContent = `${p.tx} · ${p.dr}`;
   document.getElementById('pInfo').innerHTML =
-    `<dt>Age</dt><dd>${age}</dd><dt>Phone</dt><dd>${phone}</dd><dt>Contact</dt><dd>${contact}</dd><dt>Prefers</dt><dd>${times}</dd><dt>Last visit</dt><dd>${last}</dd>`;
-  document.getElementById('pNext').innerHTML =
-    `<div class="k">Next</div><div class="nextcard">${c.next}<div class="acts"><button class="btn">Pause</button><button class="btn">Stop</button></div></div>`;
+    `<dt>Age</dt><dd>${age}</dd><dt>Phone</dt><dd>${phone}</dd><dt>Contact</dt><dd>${contact}</dd><dt>Prefers</dt><dd>${times}</dd><dt>Last visit</dt><dd>${last}</dd><dt>Recommended</dt><dd>${p.tx} · ${p.dr} · ${p.date}</dd>`;
+  document.getElementById('pRec').innerHTML =
+    `<div class="k">From the chart</div><div class="card chart"><div class="t">${c.chart.title}</div><p>${c.chart.text}</p><div class="foot">${c.chart.foot}</div></div>`;
+  const msgs = c.msgs.map(([who, t, html]) => `<div class="m ${who === 'pt' ? 'pt' : ''}"><div class="meta">${who === 'pt' ? first : 'Harbor Dental'} · ${t}</div><div class="b">${html}</div></div>`).join('');
+  const draft = `<div class="m draft"><div class="meta"><span class="draft-k">Next</span> Sends ${c.draft.when} · ${c.draft.cond}</div><div class="b">${c.draft.text}</div><div class="draft-acts"><button class="link">Edit</button><button class="link">Send now</button><button class="link">Pause follow-up</button></div></div>`;
   document.getElementById('pConvo').innerHTML =
     `<div class="legend"><span><i style="background:var(--chart-wash);box-shadow:inset 0 -1.5px 0 #9CC7AA"></i>From the chart</span><span><i style="background:var(--faq-wash);box-shadow:inset 0 -1.5px 0 #A3BCE0"></i>From an FAQ</span></div>` +
-    c.msgs.map(([who, t, html]) => `<div class="m ${who === 'pt' ? 'pt' : ''}"><div class="meta">${who === 'pt' ? p.name.split(' ')[0] : 'Harbor Dental'} · ${t}</div><div class="b">${html}</div></div>`).join('');
+    (msgs || `<p class="empty-c">No messages yet. Found in ${first}’s chart this morning.</p>`) + draft;
   document.getElementById('pSide').innerHTML =
-    `<div class="k">Used in replies</div>
-      <div class="card chart"><div class="t">${c.chart.title}</div><p>${c.chart.text}</p><div class="foot">${c.chart.foot}</div></div>
-      ${c.faq ? `<div class="card faq" style="margin-top:10px"><div class="t">${c.faq.title}</div><p>${c.faq.text}</p><div class="foot">${c.faq.foot}</div></div>` : ''}`;
+    `<div class="k">Sources used</div>
+      <div class="card chart"><div class="t">${c.chart.title}</div><p>${c.chart.text}</p></div>
+      ${c.faq.map(([t, x]) => `<div class="card faq" style="margin-top:8px"><div class="t">${t}</div><p>${x}</p></div>`).join('')}`;
+  setPTab('convo');
   panel.hidden = false;
   ptLayout.classList.add('has-panel');
   document.querySelectorAll('.q').forEach((r) => r.classList.toggle('sel', r.dataset.p === id));
+  panel.scrollTop = 0;
 }
+function setPTab(t) {
+  document.querySelectorAll('[data-ptab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.ptab === t)));
+  document.querySelectorAll('[data-ppane]').forEach((x) => (x.hidden = x.dataset.ppane !== t));
+}
+document.querySelectorAll('[data-ptab]').forEach((b) => b.addEventListener('click', () => setPTab(b.dataset.ptab)));
 function closePanel() {
   panel.hidden = true;
   openId = null;
@@ -689,6 +780,33 @@ document.getElementById('calClose').addEventListener('click', () => setCal(false
 calScrim.addEventListener('click', () => setCal(false));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setCal(false); });
 document.querySelectorAll('[data-open-cal]').forEach((b) => b.addEventListener('click', () => setCal(true)));
+
+
+/* ── integrations ───────────────────────────────────── */
+const IG = {
+  charts: { name: 'Patient charts', sub: 'Practice management system · synced 9:04 AM', reads: ['Treatment plans with nothing booked', 'The dentist’s note for each plan', 'Contact details and preferences'], writes: [], action: '<button class="btn">Sync now</button>', log: [['9:04', 'Found 2 new treatment plans: Nora Kim, Leo Brandt'], ['8:49', 'No changes'], ['Fri', 'Found 1 new treatment plan: Sam Patel']] },
+  history: { name: 'Treatment history', sub: 'Practice management system · synced 9:04 AM', reads: ['Completed procedures', 'Past visits'], writes: [], action: '<button class="btn">Sync now</button>', log: [['9:04', 'Crown seated for Grace Park. Follow-up closed'], ['Thu', 'No changes']] },
+  scheduling: { name: 'Scheduling', sub: 'Appointment book for Dr. Shah, Dr. Bell & hygiene', reads: ['Open times', 'Existing appointments', 'Cancellations'], writes: ['Appointments patients choose', 'Cancellations they ask for'], action: '<button class="btn" data-open-cal>Open calendar <span class="mk">13</span></button>', log: [['Mon', 'Booked Sam Patel · Fri 16 Oct, 10:00 · Dr. Shah'], ['Fri', 'Booked Hana Sato · Tue 20 Oct, 8:00 · hygiene'], ['6 Oct', 'Booked Robert Lindqvist · Thu 15 Oct, 1:30 · Dr. Shah']] },
+  sms: { name: 'Text messages', sub: '(555) 010-4400', reads: ['Patient replies', 'STOP and START'], writes: ['Texts on weekdays, 9–6', 'A first text and up to 2 follow-ups'], action: '<button class="btn">Settings</button>', log: [['9:52', 'Sent to Maya Chen'], ['9:37', 'Sent to Maya Chen'], ['9:00', 'Sent to Maya Chen, Daniel Okafor']] },
+  email: { name: 'Email', sub: 'hello@harbordental.example', reads: ['Patient replies', 'Unsubscribes'], writes: ['Emails to patients who prefer email', 'Same rules as texts'], action: '<button class="btn">Settings</button>', log: [['Tue', 'First email to Leo Brandt scheduled, 9:00']] },
+};
+const igLayout = document.getElementById('igLayout'), igDetail = document.getElementById('igDetail');
+function openIg(id) {
+  const d = IG[id];
+  document.getElementById('igName').textContent = d.name;
+  document.getElementById('igSub').textContent = d.sub;
+  document.getElementById('igReads').innerHTML = d.reads.map((x) => `<li>${x}</li>`).join('');
+  document.getElementById('igWrites').innerHTML = d.writes.length ? d.writes.map((x) => `<li>${x}</li>`).join('') : '<li class="muted">Nothing</li>';
+  document.getElementById('igAction').innerHTML = d.action;
+  document.getElementById('igLog').innerHTML = d.log.map(([t, x]) => `<li><time>${t}</time>${x}</li>`).join('');
+  document.getElementById('igAction').querySelectorAll('[data-open-cal]').forEach((b) => b.addEventListener('click', () => setCal(true)));
+  igDetail.hidden = false;
+  igLayout.classList.add('has-panel');
+  document.querySelectorAll('.tile').forEach((t) => t.classList.toggle('sel', t.dataset.ig === id));
+}
+function closeIg() { igDetail.hidden = true; igLayout.classList.remove('has-panel'); document.querySelectorAll('.tile.sel').forEach((t) => t.classList.remove('sel')); }
+document.getElementById('igTiles').addEventListener('click', (e) => { const t = e.target.closest('.tile'); if (t) (t.classList.contains('sel') ? closeIg() : openIg(t.dataset.ig)); });
+document.getElementById('igClose').addEventListener('click', closeIg);
 
 /* ── knowledge ──────────────────────────────────────── */
 const H = (lvl, t, used, q) => `<span class="q ${q ? '' : ''}" ${q ? `data-q="${q}"` : ''}>${used ? `<span class="use">${used}</span>` : ''}<span class="h"><span class="hm">${'#'.repeat(lvl)} </span>${t}</span></span>`;
