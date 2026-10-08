@@ -363,3 +363,56 @@ body{background:#fff}.rail{position:fixed;inset:0 auto 0 0;width:208px;backgroun
 .register-layout .register-controls select{appearance:none;-webkit-appearance:none;padding:8px 30px 8px 10px;min-width:128px;max-width:150px;background-color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16' fill='none' stroke='%236b8173' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
 .register-layout .register-controls select:hover{border-color:#a9bfb0}
 @media(max-width:480px){.register-layout .register-controls select{font-size:10px;min-width:120px;max-width:130px}}
+
+/* Phone/tablet patient details open above the queue. */
+.mobile-patient-dialog:not([open]){display:none}
+.mobile-patient-dialog[open]{display:block;width:min(560px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 32px);margin:auto;padding:0;border:1px solid #dfe7e1;border-radius:14px;overflow:auto;overscroll-behavior:contain;background:#fff;box-shadow:0 20px 70px #17342030}
+.mobile-patient-dialog::backdrop{background:#17342065}
+body:has(.mobile-patient-dialog[open]){overflow:hidden}
+.mobile-patient-dialog>.mobile-patient-toolbar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;margin:0;padding:5px 10px 5px 18px;border:0;border-bottom:1px solid #e5ebe7;background:#fff;min-height:54px}
+.mobile-patient-toolbar>span{font-size:12px;font-weight:500;color:#748279}
+.mobile-patient-toolbar>button{width:44px;height:44px;border:0;border-radius:7px;background:none;font-size:18px;color:#526a5c;cursor:pointer}
+.mobile-patient-toolbar>button:hover{background:#f0f5f1}
+.mobile-patient-dialog>.mobile-patient-body{display:block;padding:0}
+.mobile-patient-dialog .active-case{max-height:none;overflow:visible;border:0;border-radius:0;box-shadow:none}
+.mobile-patient-dialog .active-case-heading{padding:18px}
+.mobile-patient-dialog .active-case-heading h2{font-size:18px}
+.mobile-patient-dialog .active-case-heading small{font-size:11px}
+.mobile-patient-dialog .active-case-heading>.state{font-size:10px;max-width:100px}
+.mobile-patient-dialog .case-nav button{min-height:44px;font-size:12px}
+.mobile-patient-dialog .record-body>section,.mobile-patient-dialog .record-body>section+section{padding:21px 18px}
+.mobile-patient-dialog .chart-excerpt>p,.mobile-patient-dialog .chat-message p{font-size:13px}
+.mobile-patient-dialog .chart-status .facts>div{font-size:12px}
+.mobile-patient-dialog .message-history{max-height:48dvh;padding:16px}
+.mobile-patient-dialog .chat-message p{margin:0}
+.mobile-patient-dialog .scheduled-bubble p{margin:0;font-size:12px}
+.mobile-patient-dialog .response-options .control{min-height:44px;font-size:12px}
+.mobile-patient-dialog .scheduled-actions button{min-height:44px;font-size:12px}
+.mobile-patient-dialog .mini-events li p{margin-bottom:0}
+@media(max-width:900px){.register-layout>#selected-patient{display:none}}
+@media(max-width:650px){
+ .app-main>.title-row{flex-wrap:wrap;gap:13px;align-items:flex-start}
+ .app-main>.title-row>div{flex:1 1 180px}
+ .app-main>.title-row>[data-open-calendar]{flex:0 0 auto;white-space:nowrap;min-height:40px;padding:9px 12px}
+ .open-calendar-link{white-space:nowrap;min-height:36px}
+ .register-layout .register-controls input,.register-layout .register-controls select{min-height:44px}
+ .register-layout .row-person strong{font-size:12px}
+ .register-layout .row-person small{font-size:10px}
+ .register-layout .row-progress>.patient-status-line{font-size:11px}
+ .data-integration .control,.integration-row-footer a{min-height:44px;display:inline-flex;align-items:center}
+ .calendar-close,.calendar-toolbar .control,.calendar-toolbar select{min-height:44px}
+ .topic-faq button,.add-faq-inline{min-height:44px}
+}
+
+@media(max-width:650px){
+ body:has(dialog[open]){overflow:hidden}
+ .knowledge-article .article-edit,.knowledge-articles .add-topic-faq,.inline-faq-editor button,.workspace-sections>summary,.source-patient-list button{min-height:44px}
+ .inline-faq-editor input,.inline-faq-editor textarea,.faq-dialog input,.faq-dialog textarea,.section-dialog input{font-size:16px;line-height:1.5}
+ .calendar-close{min-width:44px;flex-shrink:0}
+ .mobile-patient-dialog .more-choices>summary,.mobile-patient-dialog .message-source>summary{min-height:36px;display:flex;align-items:center}
+ .register-layout .register-controls>div{flex-wrap:wrap}
+ .register-layout .register-controls input{font-size:16px;flex:1 1 150px;width:auto}
+ .register-layout .register-controls select{font-size:16px;flex:1 1 145px;max-width:none;min-width:145px}
+}
+.mobile-patient-dialog .chart-excerpt>p{margin:0}
+.mobile-patient-dialog .attention-context p{margin:5px 0 0}
