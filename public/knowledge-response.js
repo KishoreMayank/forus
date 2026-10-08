@@ -26,27 +26,28 @@ const money=n=>`$${Number(n).toLocaleString('en-US')}`;
 export function composeAnswer(c,intent,entries,entryId){
  const topic=treatmentTopic(c),id=intent==='why'?overviewIds[topic]:intent==='visit'?visitIds[topic]:entryId;
  const entry=entries.find(e=>e.id===id);
- const sources=[],parts=[];
+ const sources=[],parts=[],passages=[];
+ const add=(text,sourceId)=>{parts.push(text);passages.push({text,sourceId});};
  const needsReason=intent==='why'||(intent==='faq'&&entry?.chart);
  if(needsReason){
   sources.push(chartSource(c));
-  parts.push(missingRationale(c)?'Your chart does not include the patient-specific reason for this recommendation. I won’t guess why it was recommended.':`Your clinician’s note says: “${patientReason(c)}”`);
+  add(missingRationale(c)?'Your chart does not include the patient-specific reason for this recommendation. I won’t guess why it was recommended.':patientReason(c),'note');
  }
  if(intent==='visit'||(entry&&[...Object.values(visitIds),'faq-2','faq-4','scheduling-duration'].includes(entry.id))){
   sources.push(planSource(c));
-  parts.push(`Your current plan reserves ${c.duration||60} minutes with ${c.provider||'Dr. Lee'} for ${String(c.treatment||'the recommended treatment').toLowerCase()}.`);
+  add(`Your current plan reserves ${c.duration||60} minutes with ${c.provider||'Dr. Lee'} for ${String(c.treatment||'the recommended treatment').toLowerCase()}.`,'plan');
  }
  if(entry?.topic==='Cost & Insurance'&&c.billing){
   const b=c.billing,paid=b.payments.reduce((sum,p)=>sum+p.amount,0);
   const text=`Your recorded estimate is ${money(b.fee)} for treatment, with ${money(b.insurance)} expected from ${b.plan}. Your estimated share is ${money(b.share)}; ${money(paid)} is paid and ${money(Math.max(0,b.share-paid))} remains. Insurance coverage is an estimate.`;
-  parts.push(text);sources.push({id:'billing',kind:'chart',title:'Insurance & billing',source:c.name||'Example patient',text});
+  add(text,'billing');sources.push({id:'billing',kind:'chart',title:'Insurance & billing',source:c.name||'Example patient',text});
  }
  if(entry){
   sources.push(knowledgeSource(entry));
-  parts.push(entry.dentist?'The practice has marked this question for dentist input. I can help arrange a discussion before you decide.':`Our practice guidance: ${entry.answer}`);
+  add(entry.dentist?'The practice has marked this question for dentist input. I can help arrange a discussion before you decide.':entry.answer,entry.id);
  }else{
-  parts.push('There is no saved practice answer for this question. I can help arrange a discussion with the dental team.');
+  add('There is no saved practice answer for this question. I can help arrange a discussion with the dental team.');
  }
- if(needsReason&&missingRationale(c)&&!entry?.dentist)parts.push('I can arrange a discussion with the dentist to clarify your individual recommendation before you decide.');
- return {text:parts.join('\n\n'),sources,entry,requiresDentist:!!entry?.dentist||(needsReason&&missingRationale(c))};
+ if(needsReason&&missingRationale(c)&&!entry?.dentist)add('I can arrange a discussion with the dentist to clarify your individual recommendation before you decide.');
+ return {text:parts.join(' '),sources,passages,entry,requiresDentist:!!entry?.dentist||(needsReason&&missingRationale(c))};
 }

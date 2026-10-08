@@ -1,5 +1,5 @@
 import {loadKnowledge} from './knowledge-store.js?v=1';
-import {composeAnswer} from './knowledge-response.js?v=2';
+import {composeAnswer} from './knowledge-response.js?v=3';
 export const VERSION = 1;
 export const DAY = 86400000;
 export const START = Date.UTC(2026,9,12,9);
@@ -42,7 +42,7 @@ export function requestPayment(s,c){
 }
 export function ledger(s){return s.cases.flatMap(c=>(c.billing?.payments||[]).map(p=>({...p,caseId:c.id,name:c.name,treatment:c.treatment}))).sort((a,b)=>(b.at-a.at)||((b.seq||0)-(a.seq||0)));}
 export function event(s,c,title,detail){ c.events.push({id:`${c.id}-${c.events.length}`,at:s.now,title,detail}); }
-function say(s,c,text,who='agent',sources=[]){c.messages.push({id:`${c.id}-m${c.messages.length}`,at:s.now,who,text,sources});}
+function say(s,c,text,who='agent',sources=[],passages){c.messages.push({id:`${c.id}-m${c.messages.length}`,at:s.now,who,text,sources,...(passages?{passages}: {})});}
 function patient(s,c,text){say(s,c,text,'patient');}
 const base = (id,name,initials,color,barrier,note) => ({id,name,initials,color,barrier,note,treatment:'Crown · tooth 30',sourceStatus:'active',status:'eligible',stage:'outreach',contact:true,appointment:null,wakeAt:null,attempts:0,messages:[],events:[],sources:[],consult:false});
 const CHART_IDS={maya:1042,jordan:1087,alex:1103};
@@ -88,7 +88,7 @@ export function act(s,id,type,payload,context={}){const c=s.cases.find(x=>x.id==
   }else{
    c.note=`${author} · ${fmtDate(s.now)}: ${note}`;
    const response=composeAnswer(c,'why',context.knowledge??loadKnowledge().entries);c.sources=response.sources.map(x=>x.id);
-   if(c.contact)say(s,c,`${author} added the reason to your chart. ${response.text}`,'agent',response.sources);
+   if(c.contact)say(s,c,`${author} added the reason to your chart. ${response.text}`,'agent',response.sources,[{text:`${author} added the reason to your chart.`},...response.passages]);
    event(s,c,'Reason added to chart',`${author}: ${note}`);
   }
   if(c.contact&&!c.appointment&&c.status!=='paused'){c.status='engaged';c.stage='explained';c.wakeAt=null;}
@@ -122,7 +122,7 @@ export function act(s,id,type,payload,context={}){const c=s.cases.find(x=>x.id==
  if(type==='faq'){
   const entries=context.knowledge??loadKnowledge().entries,entry=entries.find(e=>e.id===payload);
   if(!entry)return {ok:false,message:'That answer was removed. Choose a current practice question.'};
-  const response=composeAnswer(c,'faq',entries,payload);patient(s,c,entry.question);say(s,c,response.text,'agent',response.sources);
+  const response=composeAnswer(c,'faq',entries,payload);patient(s,c,entry.question);say(s,c,response.text,'agent',response.sources,response.passages);
   if(['waiting','eligible'].includes(c.status)){c.status='engaged';c.stage='explained';c.wakeAt=null;}
   event(s,c,response.requiresDentist?'Dentist discussion offered':'Practice question answered',`${entry.question} · saved guidance and relevant patient records checked.`);
   return {ok:true,message:''};
@@ -140,11 +140,11 @@ export function act(s,id,type,payload,context={}){const c=s.cases.find(x=>x.id==
  if(type==='why'){
   if(c.stage==='explained'){c.wakeAt=prevWake;return {ok:false,message:'Explanation already shown.'};}patient(s,c,'Why was this treatment recommended?');c.barrier='Treatment understanding';c.status='engaged';c.stage='explained';
   const response=composeAnswer(c,'why',context.knowledge??loadKnowledge().entries);
-  say(s,c,response.text,'agent',response.sources);c.sources=response.sources.map(x=>x.id);
+  say(s,c,response.text,'agent',response.sources,response.passages);c.sources=response.sources.map(x=>x.id);
   event(s,c,'Recommendation explained',response.requiresDentist?'Clinical clarification offered; saved guidance and patient chart checked.':'Used the current patient chart and saved practice knowledge.');
  }else if(type==='visit'){
   if(c.visitInfo){c.wakeAt=prevWake;return {ok:false,message:'Visit information already shared.'};}c.visitInfo=true;
-  patient(s,c,'What happens at the appointment?');c.status='engaged';c.stage='explained';const response=composeAnswer(c,'visit',context.knowledge??loadKnowledge().entries);say(s,c,response.text,'agent',response.sources);c.sources=response.sources.map(x=>x.id);event(s,c,'Visit information shared','Used the current treatment plan and saved practice knowledge.');
+  patient(s,c,'What happens at the appointment?');c.status='engaged';c.stage='explained';const response=composeAnswer(c,'visit',context.knowledge??loadKnowledge().entries);say(s,c,response.text,'agent',response.sources,response.passages);c.sources=response.sources.map(x=>x.id);event(s,c,'Visit information shared','Used the current treatment plan and saved practice knowledge.');
  }else if(type==='consult'){
   patient(s,c,'I’d like to discuss this with the dentist');c.consult=true;c.stage='slots';c.status='engaged';say(s,c,'Of course. Here are 30-minute discussion appointments with Dr. Shah. This gives you time to ask questions before making a treatment decision.');event(s,c,'Discussion requested','Showing discussion times with Dr. Shah; treatment remains outstanding.');
  }else if(type==='treatment'){

@@ -572,3 +572,15 @@ body:has(.mobile-patient-dialog[open]){overflow:hidden}
 .clarification-dialog form>small{display:block;margin-top:9px;font-size:11px;line-height:1.5}
 .clarification-dialog .clarification-error{color:#943d32;font-size:12px;margin:10px 0}
 .clarification-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px;flex-wrap:wrap}
+
+.chat-message .response-prose{white-space:normal;line-height:1.8}
+.source-passage{color:inherit;text-decoration:none;border-radius:3px;box-decoration-break:clone;-webkit-box-decoration-break:clone;padding:1px 2px;cursor:pointer}
+.source-record{background:#dcece2;border-bottom:1px solid #95bba3}
+.source-knowledge{background:#e1eaf7;border-bottom:1px solid #9db5d7}
+.source-record:hover{background:#ccdfd3}.source-knowledge:hover{background:#d1dff2}
+.source-passage:focus-visible{outline:2px solid #38674d;outline-offset:2px}
+.source-legend{display:flex;gap:13px;flex-wrap:wrap;margin-top:11px;font-size:10px;color:#6a8074}
+.source-legend span:before{content:'';display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:5px;background:#9ebfa9}
+.source-legend .knowledge-key:before{background:#a4bbdc}
+.knowledge-source-back{display:inline-block;font-size:12px;color:#456c52;margin-bottom:18px;text-decoration:none}
+.knowledge-source-missing{padding:12px;background:#fff7e8;color:#785d31;margin-bottom:16px}

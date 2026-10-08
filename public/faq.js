@@ -1,13 +1,12 @@
-import {seed} from './engine.js?v=14';
-import {extendPatients} from './demo-patients.js?v=18';
 import {treatmentDescriptions} from './treatment-knowledge.js?v=3';
 import {key,DELETED_KEY,BUILT_IN_TOPICS,loadKnowledge} from './knowledge-store.js?v=1';
-import {composeAnswer,treatmentTopic} from './knowledge-response.js?v=2';
 const host=document.querySelector('.faq-list');
 const editor=document.querySelector('#faq-editor'),form=editor.querySelector('form'),error=editor.querySelector('[role="alert"]');
 let {entries,topics,deletedIds}=loadKnowledge();
 const topicDescriptions={...treatmentDescriptions,'Cost & Insurance':'Estimates, coverage, payment options, and understanding your bill.','Scheduling':'Booking, preparing for a visit, and changing an appointment.','Communication':'Who Clara is, contact preferences, and reaching the practice.'};
 let topic=entries[0]?.topic||topics[0],selected=entries[0]?.id,editing=null;
+const sourceParams=new URLSearchParams(location.search),sourceEntry=entries.find(e=>e.id===sourceParams.get('faq'));
+if(sourceEntry){topic=sourceEntry.topic;selected=sourceEntry.id;}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const chosen=()=>entries.find(e=>e.id===selected);
 host.className='knowledge-workspace';
@@ -58,20 +57,15 @@ function render(){
  const visible=entries.filter(e=>e.topic===topic);
  topicNav.innerHTML=`<summary>Sections <span>${esc(topic)}</span><span class="picker-chevron" aria-hidden="true"></span></summary><div class="section-items"><h2>Sections</h2><div class="section-links">${topics.map(t=>`<button type="button" data-topic="${esc(t)}" aria-pressed="${t===topic}"><span>${esc(t)}</span><small>${entries.filter(e=>e.topic===t).length}</small></button>`).join('')}</div><button type="button" class="add-section" data-add-section>+ Add section</button></div>`;
  if(!visible.some(e=>e.id===selected))selected=visible[0]?.id;
- host.innerHTML=`<section class="knowledge-articles" aria-label="FAQ articles"><div class="knowledge-section-title topic-heading"><h2 class="desktop-topic-title">${esc(topic)}</h2><div class="topic-actions"><span>${visible.length} ${visible.length===1?'answer':'answers'}</span>${BUILT_IN_TOPICS.includes(topic)?'':'<button type="button" class="section-action" data-rename-section>Rename</button><button type="button" class="section-action danger" data-delete-section>Delete section</button>'}</div></div><p class="topic-description">${esc(topicDescriptions[topic]||'Practice answers for this topic.')}</p>${!visible.length?'<div class="empty-section"><strong>Add your first answer</strong><p>Start with a question patients ask about this topic.</p></div>':''}${visible.map(e=>`<details class="knowledge-article ${e.id===selected?'selected':''}" data-faq="${esc(e.id)}" ${e.id===selected?'open':''}><summary class="question-select">${esc(e.question)}<span class="faq-chevron" aria-hidden="true"></span></summary><p>${esc(e.answer)}</p>${e.dentist?'<span class="dentist-badge">Dentist input required</span>':''}<div class="faq-entry-actions"><button type="button" class="article-edit" data-edit-faq="${esc(e.id)}">Edit answer</button></div></details>`).join('')}<button type="button" class="add-topic-faq" data-add-faq>+ Add FAQ</button></section><aside class="knowledge-preview" aria-label="How patients see it"><div class="knowledge-section-title"><h2>How patients see it</h2><span>Preview only</span></div><div id="response-preview"></div><p class="preview-disclaimer">Uses the same saved guidance and response logic as patient conversations. No message is sent.</p></aside>`;
+ host.innerHTML=`<section class="knowledge-articles" aria-label="FAQ articles"><div class="knowledge-section-title topic-heading"><h2 class="desktop-topic-title">${esc(topic)}</h2><div class="topic-actions"><span>${visible.length} ${visible.length===1?'answer':'answers'}</span>${BUILT_IN_TOPICS.includes(topic)?'':'<button type="button" class="section-action" data-rename-section>Rename</button><button type="button" class="section-action danger" data-delete-section>Delete section</button>'}</div></div><p class="topic-description">${esc(topicDescriptions[topic]||'Practice answers for this topic.')}</p>${!visible.length?'<div class="empty-section"><strong>Add your first answer</strong><p>Start with a question patients ask about this topic.</p></div>':''}${visible.map(e=>`<details class="knowledge-article ${e.id===selected?'selected':''}" data-faq="${esc(e.id)}" ${e.id===selected?'open':''}><summary class="question-select">${esc(e.question)}<span class="faq-chevron" aria-hidden="true"></span></summary><p>${esc(e.answer)}</p>${e.dentist?'<span class="dentist-badge">Dentist input required</span>':''}<div class="faq-entry-actions"><button type="button" class="article-edit" data-edit-faq="${esc(e.id)}">Edit answer</button></div></details>`).join('')}<button type="button" class="add-topic-faq" data-add-faq>+ Add FAQ</button></section><aside class="knowledge-preview" aria-label="How patients see it"><div class="knowledge-section-title"><h2>How patients see it</h2><span>Preview only</span></div><div id="response-preview"></div><p class="preview-disclaimer">Generic preview of practice guidance. No message is sent.</p></aside>`;
  host.prepend(topicNav);
  renderPreview();
 }
 function renderPreview(draft){
  const e=draft||chosen();
  if(!e){document.querySelector('#response-preview').innerHTML='<div class="empty-preview">Add an FAQ to see how Clara could answer a patient.</div>';return;}
- let saved;try{saved=JSON.parse(localStorage.getItem('cedar-register-v1'));}catch{}
- const cases=saved?.cases||extendPatients(seed()).cases;
- const selectedPatient=cases.find(c=>c.id===saved?.selected);
- const matches=c=>treatmentTopic(c)===e.topic;
- const c=(selectedPatient&&matches(selectedPatient)?selectedPatient:cases.find(matches))||selectedPatient||cases[0];
- const response=composeAnswer(c,'faq',[e],e.id);
- document.querySelector('#response-preview').innerHTML=`<div class="preview-patient-label">Using ${esc(c.name)}’s patient record</div><div class="message-history preview-transcript" aria-label="Example conversation"><article class="chat-message patient"><div class="chat-who">${esc(c.name.split(' ')[0])}</div><p>${esc(e.question)}</p></article><article class="chat-message assistant"><div class="chat-who">Clara · AI assistant</div><p>${esc(response.text)}</p><details class="message-source"><summary>Sources used</summary>${response.sources.map(s=>`<p><strong>${esc(s.title)}</strong><br><small>${esc(s.source)}</small><br>${esc(s.text)}</p>`).join('')}</details></article></div>${response.requiresDentist?'<div class="preview-routing">Dentist input required · Clara offers a discussion</div>':''}`;
+ const answer=e.dentist?'The practice has marked this question for dentist input. I can help arrange a discussion before you decide.':e.answer;
+ document.querySelector('#response-preview').innerHTML=`<div class="message-history preview-transcript" aria-label="Example conversation"><article class="chat-message patient"><div class="chat-who">Patient</div><p>${esc(e.question)}</p></article><article class="chat-message assistant"><div class="chat-who">Clara · AI assistant</div><p class="response-prose">${esc(answer)}</p></article></div>${e.dentist?'<div class="preview-routing">Dentist input required · Clara offers a discussion</div>':''}`;
 }
 function openEditor(id=null){editing=id;const e=entries.find(x=>x.id===id);form.reset();error.textContent='';document.querySelector('#faq-editor-title').textContent=e?'Edit FAQ':'Add FAQ';for(const name of ['question','answer','source'])form.elements[name].value=e?.[name]||'';form.elements.topic.value=e?.topic||topic;form.elements.dentist.checked=!!e?.dentist;editor.showModal();form.elements.question.focus();}
 host.addEventListener('click',event=>{if(event.target.closest('[data-add-faq]')){if(!discardDraft())return;openEditor();return;}const editAnswer=event.target.closest('[data-edit-faq]');if(editAnswer){editTopic(editAnswer.dataset.editFaq);return;}if(event.target.closest('[data-save-topic]')){saveTopic();return;}if(event.target.closest('[data-delete-faq]')){deleteFaq(draftId);return;}if(event.target.closest('[data-rename-section]')){openSectionDialog(topic);return;}if(event.target.closest('[data-delete-section]')){deleteSection(topic);return;}if(event.target.closest('[data-cancel-topic]')){render();return;}const t=event.target.closest('[data-topic],[data-preview],[data-edit]');if(!t)return;if(t.dataset.topic){topic=t.dataset.topic;render();}else if(t.dataset.edit)openEditor(t.dataset.edit);else{selected=t.dataset.preview;render();host.querySelector(`.question-select[data-preview="${CSS.escape(selected)}"]`)?.focus({preventScroll:true});}});
@@ -95,6 +89,11 @@ form.addEventListener('submit',event=>{
  entries=next;topic=entry.topic;selected=entry.id;editor.close();render();document.querySelector('#faq-status').textContent='FAQ saved. Clara will use this guidance in new replies.';
 });
 render();
+if(sourceParams.has('faq')){
+ const back=document.createElement('a');back.className='knowledge-source-back';back.textContent='← Back to patient conversation';back.href=`index.html?patient=${encodeURIComponent(sourceParams.get('patient')||'maya')}&tab=conversation`;host.before(back);
+ if(!sourceEntry){const note=document.createElement('p');note.className='knowledge-source-missing';note.textContent='This Knowledge entry has been removed. The conversation retains the original source text.';back.after(note);}
+ else host.querySelector(`[data-faq="${CSS.escape(sourceEntry.id)}"]`)?.scrollIntoView({block:'nearest'});
+}
 
 let topicDrafts=[],draftId=null;
 // Unsaved inline edits: ask before anything redraws the page, and before leaving it.
