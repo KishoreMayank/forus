@@ -76,12 +76,29 @@
   .stg:not(:last-child)::after { content: ''; position: absolute; right: -5px; top: 50%; width: 8px; height: 8px; background: var(--paper); border-top: 1px solid var(--rule); border-right: 1px solid var(--rule); transform: translateY(-50%) rotate(45deg); z-index: 1; }
   .stg.after::after { background: var(--wash); }
 
-  .queue { margin-top: 26px; }
+  .queue { margin-top: 18px; }
   .queue-h .grp { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); display: inline-flex; align-items: center; }
   .queue-h .cnt { color: var(--faint); margin-left: 6px; }
-  #brows .q .name { color: var(--slate); }
+  #rows-booked .q .name { color: var(--slate); }
   .queue-h { display: flex; align-items: baseline; justify-content: space-between; font-size: 12.5px; color: var(--faint); padding: 0 4px 8px; border-bottom: 1px solid var(--rule); }
-  .q { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; align-items: center; width: 100%; text-align: left; padding: 14px 4px; border-bottom: 1px solid var(--rule); }
+  .q, .colh { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 1fr); gap: 20px; align-items: center; width: 100%; text-align: left; }
+  .q { padding: 12px 4px; border-bottom: 1px solid var(--rule); }
+  .colh { padding: 18px 4px 0; font-size: 12px; color: var(--faint); }
+  .colh span:last-child, .q .nx { text-align: right; }
+  .who { display: flex; flex-direction: column; min-width: 0; }
+  .heard { font-size: 13px; color: var(--slate); }
+  .heard.cold { color: var(--amber); }
+  .flag { margin-left: 8px; font-size: 11px; font-weight: 600; color: var(--amber); background: var(--amber-wash); border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 18px; }
+  .filters button { padding: 5px 12px; border: 1px solid var(--rule); border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--slate); background: #fff; }
+  .filters button[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .filters .cnt { margin-left: 4px; opacity: .6; }
+  .queue[hidden] { display: none; }
+  .grp.attn { color: var(--amber); }
+  .grp-help { font-size: 12px; color: var(--faint); }
+  .hold { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--amber-wash); color: #5B4320; font-size: 13px; }
+  .hold .draft-acts { margin-top: 6px; }
+  .sdot.new { background: transparent; border: 1.5px solid var(--teal); }
   .q:hover { background: var(--wash); }
   .q .name { font-weight: 500; }
   .q .tx { font-size: 13px; color: var(--slate); }
@@ -103,11 +120,8 @@
   .scrim { position: absolute; inset: 52px 0 0 0; background: rgba(20,32,31,.18); z-index: 10; }
   .pt-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; transition: grid-template-columns .25s ease; }
   .pt-layout.has-panel { grid-template-columns: minmax(0, 1fr) 460px; }
-  .has-panel .q { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 2px 16px; }
-  .has-panel .q .name { grid-column: 1; grid-row: 1; }
-  .has-panel .q .tx { grid-column: 1; grid-row: 2; }
-  .has-panel .q .track { grid-column: 2; grid-row: 1 / 3; }
-  .has-panel .q .nx, .has-panel .nx-h { display: none; }
+  .has-panel .q, .has-panel .colh { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
+  .has-panel .q .heard, .has-panel .q .nx, .has-panel .hide-p, .has-panel .grp-help { display: none; }
   .q.sel { background: var(--teal-wash); }
   /* Thread: reads like a phone conversation. Sources are hidden until asked for. */
   .thread-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; font-size: 12px; color: var(--faint); border-bottom: 1px solid var(--rule); }
@@ -318,7 +332,8 @@
     .stg { padding: 10px 8px; }
     .stg .n { font-size: 20px; }
     .stg .l { font-size: 11px; }
-    .q { grid-template-columns: 1fr auto; gap: 4px 12px; }
+    .q, .colh { grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+    .q .heard, .colh .hide-p { display: none; }
     .q .tx { grid-column: 1; }
     .pt-layout.has-panel { grid-template-columns: 1fr; }
     .panel { position: static; }
@@ -336,7 +351,7 @@
 <header class="doc">
   <div>
     <h1>Treatment follow-up · v2</h1>
-    <p>Patients is grouped into in progress and booked. FAQs live as files. Each conversation shows which sentences came from the chart and which from an FAQ. Integrations shows patient charts, treatment history, scheduling, texts and email as tiles. The scheduling calendar opens as a pop-up. Everything is clickable.</p>
+    <p>Patients is grouped into needs attention, in progress and booked. FAQs live as files. Each conversation shows which sentences came from the chart and which from an FAQ. Integrations shows patient charts, treatment history, scheduling, texts and email as tiles. The scheduling calendar opens as a pop-up. Everything is clickable.</p>
   </div>
   <label><input type="checkbox" id="notesToggle" checked /> Show notes</label>
 </header>
@@ -373,13 +388,24 @@
 
       <div class="pt-layout" id="ptLayout">
         <div class="pt-list">
-          <div class="queue">
-            <div class="queue-h"><span class="grp">In progress <span class="cnt">7</span> <span class="mk">3</span></span><span class="nx-h">Next step</span></div>
-            <div id="qrows"></div>
+          <div class="filters" role="tablist" aria-label="Filter patients">
+            <button role="tab" data-filter="all" aria-selected="true">All <span class="cnt" data-count="all"></span></button>
+            <button role="tab" data-filter="attention" aria-selected="false">Needs attention <span class="cnt" data-count="attention"></span></button>
+            <button role="tab" data-filter="progress" aria-selected="false">In progress <span class="cnt" data-count="progress"></span></button>
+            <button role="tab" data-filter="booked" aria-selected="false">Booked <span class="cnt" data-count="booked"></span></button>
           </div>
-          <div class="queue">
-            <div class="queue-h"><span class="grp">Booked <span class="cnt">3</span> <span class="mk">4</span></span><button class="link" data-open-cal>Open calendar</button></div>
-            <div id="brows"></div>
+          <div class="colh"><span>Patient</span><span>Status</span><span class="hide-p">Last heard from</span><span class="hide-p">Next</span></div>
+          <div class="queue" data-group="attention">
+            <div class="queue-h"><span class="grp attn">Needs attention <span class="cnt" data-count="attention"></span> <span class="mk">3</span></span><span class="grp-help">The coordinator handed these to a person</span></div>
+            <div class="rows" id="rows-attention"></div>
+          </div>
+          <div class="queue" data-group="progress">
+            <div class="queue-h"><span class="grp">In progress <span class="cnt" data-count="progress"></span></span><span class="grp-help">Handled automatically · nothing needed from you</span></div>
+            <div class="rows" id="rows-progress"></div>
+          </div>
+          <div class="queue" data-group="booked">
+            <div class="queue-h"><span class="grp">Booked <span class="cnt" data-count="booked"></span> <span class="mk">4</span></span><button class="link" data-open-cal>Open calendar</button></div>
+            <div class="rows" id="rows-booked"></div>
           </div>
         </div>
 
@@ -519,8 +545,8 @@
   <ol class="notes" data-for="queue">
     <li><span class="mk">1</span><span><b>Connections in one line.</b> <span class="t">&ldquo;Synced 9:04 AM&rdquo; is all staff need. Clicking it lists the four sources and what each is used for. A failed sync would turn this amber.</span></span></li>
     <li><span class="mk">2</span><span><b>Where the list comes from, in one line.</b> <span class="t">Every patient here has treatment in their chart and nothing booked. There are only two states: in progress or booked. No progress bar, because nobody knows in advance how many steps a patient will take.</span></span></li>
-    <li><span class="mk">3</span><span><b>In progress comes first, three facts per row.</b> <span class="t">Who, which dentist (the treatment is one click away); what&rsquo;s going on now; and what happens next. The dot only changes when a person is involved (amber) or the patient asked to pause (hollow).</span></span></li>
-    <li><span class="mk">4</span><span><b>Booked sits below, quieter.</b> <span class="t">Same row shape, greyed names. Once someone is booked the only remaining step is a reminder. The appointment book opens from here when you need it.</span></span></li>
+    <li><span class="mk">3</span><span><b>Needs attention comes first.</b> <span class="t">These are the only patients waiting on a person, and the amber label says who: the front desk, or a named dentist. Everything below is handled automatically. The filters at the top narrow the list to one group.</span></span></li>
+    <li><span class="mk">4</span><span><b>Four facts per row, in the patient&rsquo;s terms.</b> <span class="t">Status describes what the patient is doing (&ldquo;Choosing a time&rdquo;, &ldquo;Not replying&rdquo;). &ldquo;Last heard from&rdquo; shows whether it&rsquo;s live or going cold, and goes amber after a week of silence. &ldquo;Next&rdquo; shows what happens without anyone stepping in. Booked patients sit last, with the calendar a click away.</span></span></li>
   </ol>
   <ol class="notes" data-for="knowledge" hidden>
     <li><span class="mk">7</span><span><b>FAQ and chart, side by side.</b> <span class="t">Pick a question and a real patient to see the reply that would go out, with each sentence tinted by its source. Staff can check a wording edit against a real case before saving it.</span></span></li>
@@ -555,18 +581,47 @@ Object.assign(patients, {
 });
 const bookedOrder = ['robert', 'sam', 'hana'];
 
-const qrows = document.getElementById('qrows'), brows = document.getElementById('brows');
-const rowHtml = (id) => {
+// What staff see per patient: status in the patient's terms, when we last heard, what happens next.
+patients.omar = { name: 'Omar Haddad', tx: 'Crown', tooth: '#31', dr: 'Dr. Bell', date: '26 Sep' };
+const ROWS = {
+  attention: [
+    ['omar', 'Asked what it will cost', 'Front desk', 'Replied 40 min ago', 'Today', 'call him back'],
+    ['elena', 'Has a clinical question', 'Dr. Bell', 'Replied Thu', 'Thu 22 Oct', 'call with Dr. Bell'],
+  ],
+  progress: [
+    ['james', 'Not replying', '', 'No reply · 7 days', 'Today 10:00', 'last follow-up'],
+    ['daniel', 'Choosing a time', '', 'Replied today', 'Thu 15 Oct', 'follow-up'],
+    ['maya', 'Choosing a time', '', 'Replied today', 'Thu 15 Oct', 'follow-up'],
+    ['nora', 'Not contacted yet', '', '—', 'Today 10:00', 'first text'],
+    ['leo', 'Not contacted yet', '', '—', 'Tue 13 Oct', 'first email'],
+    ['aisha', 'Paused until 22 Oct', '', 'Replied 1 Oct', 'Thu 22 Oct', 'check back'],
+  ],
+  booked: [
+    ['robert', 'Booked · Thu 15 Oct, 1:30', '', 'Replied 6 Oct', 'Wed 14 Oct', 'reminder'],
+    ['sam', 'Booked · Fri 16 Oct, 10:00', '', 'Replied today', 'Thu 15 Oct', 'reminder'],
+    ['hana', 'Booked · Tue 20 Oct, 8:00', '', 'Replied 9 Oct', 'Mon 19 Oct', 'reminder'],
+  ],
+};
+const rowHtml = (group) => ([id, status, flag, heard, when, what]) => {
   const p = patients[id];
+  const dot = group === 'attention' ? 'amber' : group === 'booked' ? 'booked' : status.startsWith('Paused') ? 'paused' : status === 'Not contacted yet' ? 'new' : '';
   return `<button class="q" data-p="${id}">
-    <span class="name">${p.name}</span>
-    <span class="tx">${p.dr}</span>
-    <span class="track"><span class="sdot ${p.stage === 3 ? 'booked' : p.tone || ''}"></span>${p.stageText}</span>
-    <span class="nx ${p.tone === 'amber' ? 'amber' : ''}"><b>${p.next}</b> · ${p.nextText}</span>
+    <span class="who"><span class="name">${p.name}</span><span class="tx">${p.dr}</span></span>
+    <span class="track"><span class="sdot ${dot}"></span><span>${status}${flag ? `<span class="flag">${flag}</span>` : ''}</span></span>
+    <span class="heard ${heard.startsWith('No reply') ? 'cold' : ''}">${heard}</span>
+    <span class="nx"><b>${when}</b> · ${what}</span>
   </button>`;
 };
-qrows.innerHTML = order.map(rowHtml).join('');
-brows.innerHTML = bookedOrder.map(rowHtml).join('');
+Object.entries(ROWS).forEach(([g, list]) => {
+  document.getElementById('rows-' + g).innerHTML = list.map(rowHtml(g)).join('');
+  document.querySelectorAll(`[data-count="${g}"]`).forEach((el) => (el.textContent = list.length));
+});
+document.querySelectorAll('[data-count="all"]').forEach((el) => (el.textContent = Object.values(ROWS).flat().length));
+document.querySelectorAll('[data-filter]').forEach((b) => b.addEventListener('click', () => {
+  const f = b.dataset.filter;
+  document.querySelectorAll('[data-filter]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+  document.querySelectorAll('.queue[data-group]').forEach((q) => (q.hidden = f !== 'all' && q.dataset.group !== f));
+}));
 
 /* ── views ──────────────────────────────────────────── */
 function show(view) {
@@ -688,6 +743,18 @@ const convos = {
     chart: { title: 'Chart · Dr. Shah · 22 Sep', text: '#4: <mark>cavity on the side of the tooth.</mark> Recommend composite filling.', foot: 'Treatment plan: D2392 Composite' },
     faq: [['scheduling.md › Appointment lengths', '<mark>Filling: 45 minutes</mark>']],
   },
+  omar: {
+    msgs: [
+      CO(['Fri 9 Oct', `Hi Omar, this is Harbor Dental. At your ${C('26 Sep visit, Dr. Bell recommended a crown')}. Would you like to book a time, or do you have questions first?`]),
+      PT(['Mon 8:24', 'How much will this cost with my insurance?']),
+      CO(['Mon 8:25', `Good question. ${F('I can’t see insurance details, so I’ve asked our front desk to call you')} today with an exact amount.`]),
+      PT(['Mon 8:26', 'Thanks, after 2pm is best']),
+    ],
+    draft: null,
+    hold: 'Waiting on the front desk. No messages go out until someone has called Omar (he asked for after 2 PM).',
+    chart: { title: 'Chart · Dr. Bell · 26 Sep', text: '#31: <mark>large failing amalgam, cusp fracture risk.</mark> Recommend crown.', foot: 'Treatment plan: D2740 Crown' },
+    faq: [['costs.md › How much will it cost?', '<mark>→ Front desk.</mark> Transfer to a person with the treatment code.']],
+  },
   hana: {
     msgs: [
       CO(['Fri 9 Oct', `Hi Hana, this is Harbor Dental. At your ${C('25 Sep cleaning, Dr. Bell recommended a deep cleaning')}. Would you like to book a time?`]),
@@ -714,6 +781,7 @@ const PROFILE = {
   robert: ['67', '(555) 014-1187', 'Texts, weekdays 9–6', 'Any time', '18 Sep · exam'],
   sam: ['41', '(555) 014-6604', 'Texts, weekdays 9–6', 'Mornings', '22 Sep · exam'],
   hana: ['33', '(555) 014-7351', 'Texts, weekdays 9–6', 'Mornings', '25 Sep · cleaning'],
+  omar: ['49', '(555) 014-4127', 'Texts, weekdays 9–6', 'Afternoons', '26 Sep · exam'],
 };
 let openId = null;
 function openPanel(id) {
@@ -739,7 +807,7 @@ function openPanel(id) {
     const nextSame = c.msgs[i + 1] && c.msgs[i + 1][0] === who;
     return `${sep}<div class="bub ${who === 'pt' ? 'in' : 'out'} ${nextSame ? 'grouped' : ''}"><div class="bb">${html}</div>${nextSame || !time ? '' : `<div class="bt">${time}</div>`}</div>`;
   }).join('');
-  const draft = `<div class="bub out draft"><div class="draft-cap">Scheduled · ${c.draft.when} · ${c.draft.cond}</div><div class="bb">${c.draft.text}</div><div class="draft-acts"><button class="link">Edit</button><button class="link">Send now</button><button class="link">Pause</button></div></div>`;
+  const draft = !c.draft ? `<div class="hold">${c.hold}<div class="draft-acts"><button class="link">Mark as called</button><button class="link">Reply myself</button></div></div>` : `<div class="bub out draft"><div class="draft-cap">Scheduled · ${c.draft.when} · ${c.draft.cond}</div><div class="bb">${c.draft.text}</div><div class="draft-acts"><button class="link">Edit</button><button class="link">Send now</button><button class="link">Pause</button></div></div>`;
   const channel = contact === 'Email' ? `Email · ${phone}` : `Text · ${phone}`;
   document.getElementById('pChannel').textContent = channel;
   document.getElementById('pConvo').innerHTML =
@@ -767,7 +835,7 @@ function closePanel() {
   ptLayout.classList.remove('has-panel');
   document.querySelectorAll('.q.sel').forEach((r) => r.classList.remove('sel'));
 }
-[qrows, brows].forEach((el) => el.addEventListener('click', (e) => { const b = e.target.closest('.q'); if (b) (openId === b.dataset.p ? closePanel() : openPanel(b.dataset.p)); }));
+document.querySelectorAll('.rows').forEach((el) => el.addEventListener('click', (e) => { const b = e.target.closest('.q'); if (b) (openId === b.dataset.p ? closePanel() : openPanel(b.dataset.p)); }));
 document.getElementById('pClose').addEventListener('click', closePanel);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && apptBook.hidden) closePanel(); });
 // Hovering a tinted sentence lights up its source card, and vice versa.
