@@ -84,7 +84,6 @@
   .q, .colh { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 1fr); gap: 20px; align-items: center; width: 100%; text-align: left; }
   .q { padding: 12px 4px; border-bottom: 1px solid var(--rule); }
   .colh { padding: 18px 4px 0; font-size: 12px; color: var(--faint); }
-  .has-panel .colh { padding-top: 18px; }
   .colh span:last-child, .q .nx { text-align: right; }
   .who { display: flex; flex-direction: column; min-width: 0; }
   .heard { font-size: 13px; color: var(--slate); }
@@ -161,7 +160,7 @@
   .draft-acts .link { font-size: 12px; }
   .empty-c { color: var(--faint); font-size: 13px; padding: 4px 0; }
 
-  .panel { position: sticky; top: 16px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; margin-top: 18px; max-height: calc(100vh - 32px); overflow: auto; }
+  .panel { position: sticky; top: 16px; border: 1px solid var(--rule); border-radius: 12px; background: #fff; margin-top: 26px; max-height: calc(100vh - 32px); overflow: auto; }
   .panel .k { font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
   .p-tx { color: var(--slate); font-size: 13px; }
   .p-info { display: grid; grid-template-columns: 110px 1fr; gap: 5px 12px; margin: 0; padding: 14px 20px; border-bottom: 1px solid var(--rule); font-size: 13px; }
@@ -390,14 +389,14 @@
       </div>
 
 
-      <div class="filters" role="tablist" aria-label="Filter patients">
-        <button role="tab" data-filter="all" aria-selected="true">All <span class="cnt" data-count="all"></span></button>
-        <button role="tab" data-filter="attention" aria-selected="false">Needs attention <span class="cnt" data-count="attention"></span></button>
-        <button role="tab" data-filter="progress" aria-selected="false">In progress <span class="cnt" data-count="progress"></span></button>
-        <button role="tab" data-filter="booked" aria-selected="false">Booked <span class="cnt" data-count="booked"></span></button>
-      </div>
       <div class="pt-layout" id="ptLayout">
         <div class="pt-list">
+          <div class="filters" role="tablist" aria-label="Filter patients">
+            <button role="tab" data-filter="all" aria-selected="true">All <span class="cnt" data-count="all"></span></button>
+            <button role="tab" data-filter="attention" aria-selected="false">Needs attention <span class="cnt" data-count="attention"></span></button>
+            <button role="tab" data-filter="progress" aria-selected="false">In progress <span class="cnt" data-count="progress"></span></button>
+            <button role="tab" data-filter="booked" aria-selected="false">Booked <span class="cnt" data-count="booked"></span></button>
+          </div>
           <div class="colh"><span>Patient</span><span>Status</span><span class="hide-p">Last heard from</span><span class="hide-p">Next</span></div>
           <div class="queue" data-group="attention">
             <div class="queue-h"><span class="grp attn">Needs attention <span class="cnt" data-count="attention"></span> <span class="mk">3</span></span><span class="grp-help">The coordinator handed these to a person</span></div>
