@@ -2,6 +2,7 @@ import type {
   Appointment, Case, CaseEvent, CaseStatus, FaqEntry, Message, Part, ReplyOption, Slot, State, Wake, WakeType,
 } from './types';
 import { TREATMENTS } from './catalog';
+import { fromMarkdown } from './faqmd';
 import { CONSULT_NOTES, PRACTICE } from './seed';
 import { dayKey, findSlots, getSlot, isBookable } from './slots';
 import { DAY, HOUR, MIN, addDays, fmtDM, fmtDateTime, fmtTime, fmtWDM, nextContactTime, nextWeek, withTime } from './time';
@@ -37,6 +38,7 @@ export type Action =
   | { type: 'staffPause'; caseId: string }
   | { type: 'resolveHold'; caseId: string }
   | { type: 'sync' }
+  | { type: 'editFaq'; fileId: string; md: string }
   | { type: 'replayLast' };
 
 // ── message parts ────────────────────────────────────────────────────────────
@@ -729,6 +731,11 @@ export function apply(s: State, action: Action) {
     case 'sync':
       s.lastSync = s.now;
       break;
+    case 'editFaq': {
+      const f = s.faqs[action.fileId];
+      if (f) Object.assign(f, fromMarkdown(action.md, f), { edited: s.now, editedBy: 'You' });
+      break;
+    }
     case 'replayLast':
       if (s.lastWake) runWake(s, s.cases[s.lastWake.caseId], s.lastWake.wake, true);
       break;

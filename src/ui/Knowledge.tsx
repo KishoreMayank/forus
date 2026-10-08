@@ -1,27 +1,33 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useStore } from '../store';
 import { previewAnswer } from '../domain/engine';
 import { faqUses, optionForFaq } from '../domain/view';
-import { TREATMENTS } from '../domain/catalog';
+import { toMarkdown } from '../domain/faqmd';
 import { fmtDM } from '../domain/time';
 import { Parts } from './PatientPanel';
 
+const ROUTE_LABEL = { dentist: 'Handed to the dentist', front_desk: 'Handed to the front desk' } as const;
+
 export function Knowledge() {
-  const { state, ui, setUi } = useStore();
+  const { state, ui, setUi, act } = useStore();
   const files = Object.values(state.faqs);
   const file = state.faqs[ui.faqFile] ?? files[0];
   const [key, setKey] = useState<string | null>(null);
+  const [draft, setDraft] = useState<string | null>(null); // markdown while editing
   const entry = file.entries.find((e) => e.key === key) ?? file.entries[0];
 
-  // Patients this file can be previewed with: those whose treatment uses it (or anyone, for shared files).
-  const candidates = useMemo(() => state.caseOrder.filter((id) => {
-    const c = state.cases[id];
-    return optionForFaq(state, c, file.id, entry.key) !== null;
-  }), [state, file.id, entry.key]);
-  const [pv, setPv] = useState<string | null>(null);
-  const caseId = pv && candidates.includes(pv) ? pv : candidates[0];
-  const optionId = caseId ? optionForFaq(state, state.cases[caseId], file.id, entry.key) : null;
-  const reply = caseId && optionId ? previewAnswer(state, caseId, optionId) : undefined;
+  // One example patient this answer applies to; the reply is composed by the real engine.
+  const example = state.caseOrder.find((id) => optionForFaq(state, state.cases[id], file.id, entry.key) !== null);
+  const optionId = example ? optionForFaq(state, state.cases[example], file.id, entry.key) : null;
+  const reply = example && optionId ? previewAnswer(state, example, optionId) : undefined;
+  const exampleName = example ? state.patients[state.cases[example].patientId].firstName : null;
+
+  const choose = (id: string) => { setUi({ faqFile: id }); setKey(null); setDraft(null); };
+  const save = () => {
+    if (draft === null) return;
+    act({ type: 'editFaq', fileId: file.id, md: draft }, `Saved ${file.file}`);
+    setDraft(null);
+  };
 
   return (
     <section className="view">
@@ -31,48 +37,67 @@ export function Knowledge() {
       </header>
       <div className="kb">
         <nav className="tree" aria-label="FAQ files">
-          <div className="dir">faq/</div>
           {files.map((f) => (
-            <button key={f.id} aria-current={f.id === file.id} onClick={() => { setUi({ faqFile: f.id }); setKey(null); }}>
-              {f.file}{f.draft && <span className="draft">draft</span>}
+            <button key={f.id} aria-current={f.id === file.id} onClick={() => choose(f.id)}>
+              {f.title}{f.draft && <span className="draft">Draft</span>}
             </button>
           ))}
         </nav>
 
-        <div className="md">
-          <div className="md-head"><span className="file">{file.file}</span><span>Edited {fmtDM(file.edited)} by {file.editedBy}</span></div>
-          <div className="src">
-            <span className="h"><span className="hm"># </span>{file.title}</span>{'\n'}
-            <span className="bq">&gt; {file.intro}</span>{'\n\n'}
-            {file.entries.map((e) => {
-              const uses = faqUses(state, `${file.id}#${e.key}`);
-              return (
-                <button key={e.key} className={`mdq ${e.key === entry.key ? 'sel' : ''}`} onClick={() => setKey(e.key)}>
-                  <span className="use">{uses ? `${uses} ${uses === 1 ? 'reply' : 'replies'}` : '—'}</span>
-                  <span className="h"><span className="hm">## </span>{e.q}</span>{'\n'}
-                  {e.a ? e.a : <><span className="rule">{e.route === 'dentist' ? '→ Ask the dentist.' : '→ Front desk.'}</span> Don’t answer from this file.</>}
-                </button>
-              );
-            })}
+        <div className="doc">
+          <div className="doc-head">
+            <div>
+              <h2>{file.title}</h2>
+              <p className="doc-meta">{file.file} · edited {fmtDM(file.edited)} by {file.editedBy}</p>
+            </div>
+            {draft === null ? (
+              <button className="btn" onClick={() => setDraft(toMarkdown(file))}>Edit</button>
+            ) : (
+              <span className="doc-actions">
+                <button className="btn quiet" onClick={() => setDraft(null)}>Cancel</button>
+                <button className="btn primary" onClick={save}>Save</button>
+              </span>
+            )}
           </div>
+
+          {draft !== null ? (
+            <div className="editor">
+              <textarea value={draft} onChange={(e) => setDraft(e.target.value)} spellCheck aria-label={`Edit ${file.file}`} />
+              <p className="help">Start a question with <code>##</code>. To hand a question off instead of answering, write <code>→ Ask the dentist.</code> or <code>→ Front desk.</code> as its answer.</p>
+            </div>
+          ) : (
+            <>
+              <p className="doc-intro">{file.intro}</p>
+              <ol className="faq-list">
+                {file.entries.map((e) => {
+                  const uses = faqUses(state, `${file.id}#${e.key}`);
+                  return (
+                    <li key={e.key}>
+                      <button className={`faq ${e.key === entry.key ? 'sel' : ''}`} onClick={() => setKey(e.key)}>
+                        <span className="faq-q">{e.q}</span>
+                        {e.route
+                          ? <span className="faq-route">{ROUTE_LABEL[e.route]}</span>
+                          : <span className="faq-a">{e.a}</span>}
+                        <span className="faq-uses">{uses ? `Used in ${uses} ${uses === 1 ? 'reply' : 'replies'}` : 'Not used yet'}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </>
+          )}
         </div>
 
         <aside className="preview">
-          <div className="k">Preview with a chart</div>
-          {candidates.length === 0 ? (
-            <p className="help">This entry isn’t a patient question. The coordinator uses it when offering times.</p>
-          ) : (
+          <div className="k">How patients see it</div>
+          {reply && exampleName ? (
             <>
-              <select value={caseId} onChange={(e) => setPv(e.target.value)} aria-label="Preview patient">
-                {candidates.map((id) => {
-                  const c = state.cases[id];
-                  return <option key={id} value={id}>{state.patients[c.patientId].name} · {TREATMENTS[state.recommendations[c.recommendationId].treatment].label}</option>;
-                })}
-              </select>
-              <p className="help">The reply this patient would get to “{entry.q}”</p>
-              {reply && <div className="bub out show-src-always"><div className="bb"><Parts parts={reply.parts} /></div></div>}
-              <div className="legend"><span><i className="lg-chart" />From the chart</span><span><i className="lg-faq" />From an FAQ</span></div>
+              <p className="help">“{entry.q}”, answered for {exampleName}, using {exampleName}’s chart.</p>
+              <div className="bub out show-src-always"><div className="bb"><Parts parts={reply.parts} /></div></div>
+              <div className="legend"><span><i className="lg-chart" />From the chart</span><span><i className="lg-faq" />From this file</span></div>
             </>
+          ) : (
+            <p className="help">This entry isn’t a patient question. The coordinator uses it behind the scenes.</p>
           )}
         </aside>
       </div>

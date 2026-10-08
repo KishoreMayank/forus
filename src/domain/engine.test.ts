@@ -187,3 +187,16 @@ describe('no invented clinical facts', () => {
     expect(s.lastSync).toBeLessThanOrEqual(s.now);
   });
 });
+
+describe('editing FAQ files', () => {
+  it('round-trips markdown and changes the replies the coordinator sends', async () => {
+    const { toMarkdown } = await import('./faqmd');
+    const { previewAnswer } = await import('./engine');
+    let s = initialState();
+    const md = toMarkdown(s.faqs.crowns);
+    s = run(s, { type: 'editFaq', fileId: 'crowns', md });
+    expect(s.faqs.crowns.entries.map((e) => e.key)).toEqual(['why', 'last', 'alt', 'wait']);
+    s = run(s, { type: 'editFaq', fileId: 'crowns', md: md.replace('Most last 10–15 years', 'Most crowns last 15 years or more') });
+    expect(textOf(previewAnswer(s, 'maya', 'q:last')!.parts)).toContain('15 years or more');
+  });
+});

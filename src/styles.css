@@ -486,3 +486,82 @@ button.ap:hover { filter: brightness(1.08); }
 }
 .next-note { align-self: stretch; margin-top: 12px; padding: 8px 0 8px 12px; border-left: 2px solid var(--teal); font-size: 13.5px; color: var(--slate); }
 .next-note b { color: var(--ink); font-weight: 600; }
+
+/* ── Knowledge: rendered FAQ, markdown only while editing ─────── */
+.kb { margin: 24px 0 0; border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; background: #fff; }
+.tree { font-family: var(--sans); font-size: 14px; padding: 12px 0; }
+.tree button { padding: 8px 18px; color: var(--slate); }
+.tree button[aria-current="true"] { color: var(--ink); font-weight: 600; background: var(--wash); }
+.tree button .draft { font-size: 11.5px; font-weight: 500; color: var(--amber); background: var(--amber-wash); border-radius: 4px; padding: 0 6px; }
+.doc { padding: 22px 28px 28px; min-width: 0; }
+.doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.doc-head h2 { font-size: 20px; font-weight: 600; }
+.doc-meta { color: var(--faint); font-size: 13px; margin-top: 2px; }
+.doc-actions { display: flex; gap: 8px; }
+.doc-intro { color: var(--slate); font-size: 14.5px; margin: 14px 0 6px; max-width: 640px; }
+.faq-list { margin-top: 10px; }
+.faq { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; padding: 14px 14px; margin: 0 -14px; border-radius: 10px; border-bottom: 1px solid var(--rule); }
+.faq-list li:last-child .faq { border-bottom: 0; }
+.faq:hover { background: var(--wash); }
+.faq.sel { background: var(--faq-wash); }
+.faq-q { font-weight: 600; font-size: 15px; }
+.faq-a { color: var(--ink-2, #3B4746); font-size: 14.5px; line-height: 1.55; max-width: 640px; }
+.faq-route { align-self: flex-start; font-size: 12.5px; font-weight: 500; color: var(--amber); background: var(--amber-wash); border-radius: 6px; padding: 2px 8px; }
+.faq-uses { font-size: 12.5px; color: var(--faint); }
+.editor { margin-top: 16px; }
+.editor textarea { width: 100%; min-height: 360px; font: 14px/1.7 var(--mono); color: var(--ink); padding: 14px 16px; border: 1px solid var(--rule); border-radius: 10px; background: var(--wash); resize: vertical; }
+.editor textarea:focus { outline: 2px solid var(--teal-wash); border-color: var(--teal); background: #fff; }
+.editor .help { margin-top: 8px; }
+.help code { font: 12.5px var(--mono); background: var(--wash); border-radius: 4px; padding: 1px 5px; }
+.btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.quiet { background: none; }
+@media (max-width: 900px) { .doc { padding: 18px 16px; } }
+
+/* ── Type scale: smaller, airier, easier to scan (overrides above) ─ */
+body { font-size: 13.5px; line-height: 1.55; letter-spacing: 0.005em; }
+.page-head h1 { font-size: 22px; letter-spacing: -0.015em; }
+.page-head p { font-size: 13.5px; margin-top: 2px; }
+.bar .practice, .nav button { font-size: 13px; }
+.sync > button { font-size: 12px; }
+.count-line { font-size: 12.5px; color: var(--faint); margin-top: 18px; }
+.search input { font-size: 13.5px; padding: 8px 12px; }
+.filters button { font-size: 12.5px; padding: 4px 11px; }
+.queue { margin-top: 22px; }
+.queue-h { padding: 8px 4px; }
+.queue-h .grp { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--slate); }
+.queue-h .cnt { font-size: 12px; }
+.q { padding: 13px 14px 13px 16px; gap: 14px; }
+.q .name { font-size: 14px; font-weight: 500; }
+.q .tx { font-size: 12.5px; color: var(--faint); margin-top: 1px; }
+.q .track { font-size: 13px; color: var(--ink-2, #3B4746); gap: 7px; }
+.q .track .flag { font-size: 11px; padding: 1px 6px; }
+.q .chev { font-size: 15px; }
+.sdot { width: 6px; height: 6px; }
+.panel-head h3 { font-size: 16px; }
+.p-tx, .p-status { font-size: 12.5px; }
+.p-tabs button { font-size: 13px; }
+.p-sec { padding: 16px 20px; }
+.p-sec h4 { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--slate); margin-bottom: 8px; }
+.quote { font-size: 13.5px; line-height: 1.6; }
+.src-line { font-size: 12px; }
+.kvr { font-size: 13px; gap: 9px 16px; }
+.act li { font-size: 13px; padding: 9px 0; }
+.act time, .act span { font-size: 12px; }
+.act span { display: block; margin-top: 1px; }
+.next-line { font-size: 13px; }
+.bb { font-size: 13.5px; line-height: 1.5; }
+.bt, .day-sep, .draft-cap { font-size: 11px; }
+.thread-bar { font-size: 12px; }
+.try-h { font-size: 12px; }
+.chip-btn { font-size: 12.5px; padding: 5px 10px; }
+.tile b { font-size: 14px; }
+.tile small, .tile-foot { font-size: 12.5px; }
+.doc-head h2 { font-size: 17px; }
+.doc-intro, .faq-a { font-size: 13.5px; }
+.faq-q { font-size: 14px; }
+.faq-uses, .doc-meta { font-size: 12px; }
+.tree { font-size: 13px; }
+.kvr dt, .act time, .src-line, .faq-uses { color: var(--faint); }
+.q .tx, .kvr dt, .act span, .faq-uses, .doc-meta, .count-line { color: var(--slate); }
+.act time, .src-line, .bt { color: #7E898E; }
