@@ -3,12 +3,5 @@
   "framework": null,
   "buildCommand": "",
   "installCommand": "",
-  "outputDirectory": "public",
-  "redirects": [
-    {
-      "source": "/redesigns/:path*",
-      "destination": "/:path*",
-      "permanent": true
-    }
-  ]
+  "outputDirectory": "public"
 }

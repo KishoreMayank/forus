@@ -32,4 +32,4 @@ Requires Node.js 20+. The workflow tests cover scheduling, pauses, completion, c
 
 Production: https://forus-lemon.vercel.app/
 
-Pushes to `main` deploy automatically through Vercel. Older `/redesigns/` links redirect to the current pages in production.
+Pushes to `main` deploy automatically through Vercel.
