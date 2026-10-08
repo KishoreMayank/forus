@@ -109,6 +109,31 @@
   .has-panel .q .track { grid-column: 2; grid-row: 1 / 3; }
   .has-panel .q .nx, .has-panel .nx-h { display: none; }
   .q.sel { background: var(--teal-wash); }
+  /* Thread: reads like a phone conversation. Sources are hidden until asked for. */
+  .thread-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; font-size: 12px; color: var(--faint); border-bottom: 1px solid var(--rule); }
+  .src-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--slate); }
+  .thread { padding: 8px 16px 18px; display: flex; flex-direction: column; background: #FAFBFB; }
+  .day-sep { align-self: center; font-size: 11.5px; color: var(--faint); margin: 14px 0 8px; }
+  .bub { max-width: 80%; display: flex; flex-direction: column; margin-bottom: 8px; }
+  .bub.grouped { margin-bottom: 3px; }
+  .bub.in { align-self: flex-start; align-items: flex-start; }
+  .bub.out { align-self: flex-end; align-items: flex-end; }
+  .bb { padding: 8px 12px; border-radius: 18px; font-size: 13.5px; line-height: 1.45; }
+  .bub.in .bb { background: #ECEEEE; color: var(--ink); border-bottom-left-radius: 6px; }
+  .bub.out .bb { background: var(--teal); color: #fff; border-bottom-right-radius: 6px; }
+  .bub.grouped.in .bb { border-bottom-left-radius: 18px; }
+  .bub.grouped.out .bb { border-bottom-right-radius: 18px; }
+  .bt { font-size: 10.5px; color: var(--faint); margin-top: 3px; padding: 0 4px; }
+  .bub.draft { margin-top: 10px; }
+  .bub.draft .bb { background: #fff; color: var(--slate); border: 1.5px dashed #9FC3C9; }
+  .draft-cap { font-size: 11px; color: var(--teal); margin-bottom: 4px; padding: 0 4px; }
+  .bub.draft .draft-acts { margin-top: 4px; padding: 0 4px; }
+  /* Source tints: off by default; plain text in the bubble */
+  .thread .src-chart, .thread .src-faq { background: none; box-shadow: none; padding: 0; color: inherit; }
+  .show-src .thread .src-chart { background: #DCEFE2; color: #1D4A31; box-shadow: none; border-radius: 3px; padding: 0 2px; }
+  .show-src .thread .src-faq { background: #DCE7F6; color: #1F4470; box-shadow: none; border-radius: 3px; padding: 0 2px; }
+  .show-src .bub.out:not(.draft) .bb { background: #fff; color: var(--ink); border: 1px solid var(--rule); }
+  .srcs summary { cursor: pointer; font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
   .p-tabs { display: flex; gap: 2px; padding: 8px 14px 0; border-bottom: 1px solid var(--rule); }
   .p-tabs button { padding: 7px 10px; font-size: 13px; font-weight: 500; color: var(--slate); border-bottom: 2px solid transparent; margin-bottom: -1px; }
   .p-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--teal); }
@@ -367,16 +392,17 @@
             <button class="x" id="pClose" aria-label="Close patient">×</button>
           </div>
           <div class="p-tabs" role="tablist">
-            <button role="tab" data-ptab="convo" aria-selected="true">Conversation</button>
-            <button role="tab" data-ptab="info" aria-selected="false">Patient</button>
+            <button role="tab" data-ptab="info" aria-selected="true">Patient</button>
+            <button role="tab" data-ptab="convo" aria-selected="false">Conversation</button>
           </div>
-          <div data-ppane="convo">
-            <div class="p-sec"><div class="convo" id="pConvo"></div></div>
-            <div class="p-sec" id="pSide"></div>
-          </div>
-          <div data-ppane="info" hidden>
+          <div data-ppane="info">
             <dl class="p-info" id="pInfo"></dl>
             <div class="p-sec" id="pRec"></div>
+          </div>
+          <div data-ppane="convo" hidden>
+            <div class="thread-bar"><span id="pChannel"></span><label class="src-toggle"><input type="checkbox" id="srcToggle" /> Show sources</label></div>
+            <div class="thread" id="pConvo"></div>
+            <details class="p-sec srcs" id="pSide"></details>
           </div>
         </aside>
       </div>
@@ -702,16 +728,28 @@ function openPanel(id) {
     `<dt>Age</dt><dd>${age}</dd><dt>Phone</dt><dd>${phone}</dd><dt>Contact</dt><dd>${contact}</dd><dt>Prefers</dt><dd>${times}</dd><dt>Last visit</dt><dd>${last}</dd><dt>Recommended</dt><dd>${p.tx} · ${p.dr} · ${p.date}</dd>`;
   document.getElementById('pRec').innerHTML =
     `<div class="k">From the chart</div><div class="card chart"><div class="t">${c.chart.title}</div><p>${c.chart.text}</p><div class="foot">${c.chart.foot}</div></div>`;
-  const msgs = c.msgs.map(([who, t, html]) => `<div class="m ${who === 'pt' ? 'pt' : ''}"><div class="meta">${who === 'pt' ? first : 'Harbor Dental'} · ${t}</div><div class="b">${html}</div></div>`).join('');
-  const draft = `<div class="m draft"><div class="meta"><span class="draft-k">Next</span> Sends ${c.draft.when} · ${c.draft.cond}</div><div class="b">${c.draft.text}</div><div class="draft-acts"><button class="link">Edit</button><button class="link">Send now</button><button class="link">Pause follow-up</button></div></div>`;
+  // Split "Mon 9:36" into a day (shown once, as a separator) and a time (shown under the bubble).
+  let lastDay = null;
+  const msgs = c.msgs.map(([who, t, html], i) => {
+    const hasTime = /\d:\d\d$/.test(t);
+    const day = hasTime ? t.replace(/\s*\d{1,2}:\d\d$/, '') : t;
+    const time = hasTime ? t.match(/\d{1,2}:\d\d$/)[0] : '';
+    const sep = day !== lastDay ? `<div class="day-sep">${day}</div>` : '';
+    lastDay = day;
+    const nextSame = c.msgs[i + 1] && c.msgs[i + 1][0] === who;
+    return `${sep}<div class="bub ${who === 'pt' ? 'in' : 'out'} ${nextSame ? 'grouped' : ''}"><div class="bb">${html}</div>${nextSame || !time ? '' : `<div class="bt">${time}</div>`}</div>`;
+  }).join('');
+  const draft = `<div class="bub out draft"><div class="draft-cap">Scheduled · ${c.draft.when} · ${c.draft.cond}</div><div class="bb">${c.draft.text}</div><div class="draft-acts"><button class="link">Edit</button><button class="link">Send now</button><button class="link">Pause</button></div></div>`;
+  const channel = contact === 'Email' ? `Email · ${phone}` : `Text · ${phone}`;
+  document.getElementById('pChannel').textContent = channel;
   document.getElementById('pConvo').innerHTML =
-    `<div class="legend"><span><i style="background:var(--chart-wash);box-shadow:inset 0 -1.5px 0 #9CC7AA"></i>From the chart</span><span><i style="background:var(--faq-wash);box-shadow:inset 0 -1.5px 0 #A3BCE0"></i>From an FAQ</span></div>` +
-    (msgs || `<p class="empty-c">No messages yet. Found in ${first}’s chart this morning.</p>`) + draft;
+    (msgs || `<div class="day-sep">Found in ${first}’s chart this morning</div>`) + draft;
+  const n = 1 + c.faq.length;
   document.getElementById('pSide').innerHTML =
-    `<div class="k">Sources used</div>
-      <div class="card chart"><div class="t">${c.chart.title}</div><p>${c.chart.text}</p></div>
+    `<summary>Sources used · ${n}</summary>
+      <div class="card chart" style="margin-top:10px"><div class="t">${c.chart.title}</div><p>${c.chart.text}</p></div>
       ${c.faq.map(([t, x]) => `<div class="card faq" style="margin-top:8px"><div class="t">${t}</div><p>${x}</p></div>`).join('')}`;
-  setPTab('convo');
+  setPTab('info');
   panel.hidden = false;
   ptLayout.classList.add('has-panel');
   document.querySelectorAll('.q').forEach((r) => r.classList.toggle('sel', r.dataset.p === id));
@@ -722,6 +760,7 @@ function setPTab(t) {
   document.querySelectorAll('[data-ppane]').forEach((x) => (x.hidden = x.dataset.ppane !== t));
 }
 document.querySelectorAll('[data-ptab]').forEach((b) => b.addEventListener('click', () => setPTab(b.dataset.ptab)));
+document.getElementById('srcToggle').addEventListener('change', (e) => panel.classList.toggle('show-src', e.target.checked));
 function closePanel() {
   panel.hidden = true;
   openId = null;
