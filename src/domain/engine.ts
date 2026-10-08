@@ -373,7 +373,9 @@ function handleReply(s: State, caseId: string, optionId: string) {
       suppressPending(s, c, 'Call booked; no scheduling follow-up needed.');
       send(s, c, k('consult_booked'), [T(`Booked: a 20-minute call with ${provider.short} on ${fmtWDM(sl.start)} at ${fmtTime(sl.start)}. I’ve shared your question with the team so they’re ready. Nothing else is booked; you can decide after you’ve talked.`)], 'Call booked');
       event(s, c, 'coordinator', 'booking', `Call with ${provider.short} booked · ${fmtWDM(sl.start)}, ${fmtTime(sl.start)}`, 'Treatment stays unbooked until the patient decides.');
-      schedule(s, c, 'consult_check', sl.end + 2 * HOUR, 'Check in after the call');
+      const callReminder = withTime(addDays(sl.start, -1), 17);
+      if (callReminder > s.now) schedule(s, c, 'reminder', callReminder, 'Call reminder');
+      else schedule(s, c, 'consult_check', sl.end + 2 * HOUR, 'Check in after the call');
       break;
     }
     case optionId === 'reschedule_consult': {
@@ -565,11 +567,14 @@ function runWake(s: State, c: Case, wake: Wake, replay = false) {
       return;
     }
     case 'reminder': {
-      const a = activeAppt(s, c);
+      const call = activeAppt(s, c) ? undefined : activeConsult(s, c);
+      const a = activeAppt(s, c) ?? call;
       if (!a) return;
-      send(s, c, k('reminder'), [T(`Reminder: your appointment with ${provider.short} is tomorrow, ${fmtWDM(a.start)} at ${fmtTime(a.start)} (about ${dur(tx.minutes)}). Reply here if anything changes.`)], 'Reminder');
-      if (canContact(c)) event(s, c, 'coordinator', 'message', 'Reminder sent', 'Appointment confirmed in the book the day before.');
-      schedule(s, c, 'visit_check', a.end, 'Check schedule after visit');
+      const what = call ? `call with ${provider.short} is tomorrow, ${fmtWDM(a.start)} at ${fmtTime(a.start)} (20 minutes)` : `appointment with ${provider.short} is tomorrow, ${fmtWDM(a.start)} at ${fmtTime(a.start)} (about ${dur(tx.minutes)})`;
+      send(s, c, k('reminder'), [T(`Reminder: your ${what}. Reply here if you need a different time.`)], 'Reminder');
+      if (canContact(c)) event(s, c, 'coordinator', 'message', 'Reminder sent', 'Confirmed in the appointment book the day before.');
+      if (call) schedule(s, c, 'consult_check', a.end + 2 * HOUR, 'Check in after the call');
+      else schedule(s, c, 'visit_check', a.end, 'Check schedule after visit');
       return;
     }
     case 'visit_check': {
@@ -619,6 +624,7 @@ export function tick(s: State, until: number) {
     runWake(s, best, best.next!);
   }
   s.now = Math.max(s.now, until);
+  s.lastSync = Math.max(s.lastSync, Math.floor((s.now - 4 * MIN) / (15 * MIN)) * 15 * MIN + 4 * MIN); // every 15 minutes, at :04/:19/:34/:49
 }
 
 // ── practice and staff events ────────────────────────────────────────────────
@@ -736,9 +742,11 @@ export function dispatch(prev: State, action: Action): State {
 }
 
 /** Dry run: what would the pending wake-up do? Returns the message it would send, if any. */
-export function previewNext(s: State, caseId: string): { at: number; label: string; message?: Message } | null {
+export function previewNext(s: State, caseId: string): { at: number; label: string; message?: Message; note?: string } | null {
   const c = s.cases[caseId];
   if (!c?.next) return null;
+  // This message quotes the dentist's note from the call, which doesn't exist until the call happens.
+  if (c.next.type === 'consult_check') return { at: c.next.at, label: c.next.label, note: `Wording comes from ${s.providers[c.providerId].short}’s note after the call.` };
   const draft: State = structuredClone(s);
   const dc = draft.cases[caseId];
   draft.now = Math.max(draft.now, dc.next!.at);

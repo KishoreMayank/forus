@@ -52,5 +52,6 @@ export function initialState(): State {
   }
   tick(s, DEMO_START);
   s.now = DEMO_START;
+  s.lastSync = DEMO_START - 26 * 60_000; // 9:04, the morning sync that found Nora and Leo
   return s;
 }

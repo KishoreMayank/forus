@@ -136,7 +136,7 @@ function ConversationTab({ caseId }: { caseId: string }) {
           </div>
         )}
         {!c.hold && preview && !draft && (
-          <div className="day-sep">Next: {cap(rel(preview.at, state.now))} · {preview.label.toLowerCase()} (no message)</div>
+          <div className="next-note">Next: <b>{cap(rel(preview.at, state.now))}</b> · {preview.label.toLowerCase()}{preview.note ? <span> · {preview.note}</span> : ''}</div>
         )}
         <div ref={end} />
       </div>

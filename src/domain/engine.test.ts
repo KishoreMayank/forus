@@ -153,7 +153,7 @@ describe('rules', () => {
 
 describe('clarification: Elena', () => {
   it('records the dentist’s note after the call and leaves the decision to her', () => {
-    const s = jump(initialState(), 'elena');
+    const s = jump(jump(initialState(), 'elena'), 'elena'); // call reminder, then the check-in after the call
     expect(s.cases.elena.stage).toBe('post_consult');
     expect(s.notes['note-elena-consult']).toBeDefined();
     expect(replyOptions(s, 'elena').map((o) => o.id)).toContain('proceed');
@@ -168,5 +168,22 @@ describe('knowledge preview', () => {
     expect(textOf(previewAnswer(s, 'maya', 'q:alt')!.parts)).toContain('call with Dr. Shah');
     expect(textOf(previewAnswer(s, 'maya', 'cost')!.parts)).toContain('front desk');
     expect(textOf(previewAnswer(s, 'james', 'q:hurt')!.parts)).toContain('numbed');
+  });
+});
+
+describe('no invented clinical facts', () => {
+  it('never previews a message that quotes a note that doesn’t exist yet', () => {
+    let s = initialState();
+    // Elena's next step is the call reminder; after it, the check-in that quotes the call note.
+    expect(previewNext(s, 'elena')!.label).toBe('Call reminder');
+    s = jump(s, 'elena');
+    const pv = previewNext(s, 'elena')!;
+    expect(pv.message).toBeUndefined();
+    expect(s.notes['note-elena-consult']).toBeUndefined();
+  });
+  it('sync time moves with the clock', () => {
+    const s = run(initialState(), { type: 'advance', ms: DAY });
+    expect(s.lastSync).toBeGreaterThan(initialState().lastSync);
+    expect(s.lastSync).toBeLessThanOrEqual(s.now);
   });
 });

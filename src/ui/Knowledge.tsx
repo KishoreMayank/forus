@@ -21,7 +21,7 @@ export function Knowledge() {
   const [pv, setPv] = useState<string | null>(null);
   const caseId = pv && candidates.includes(pv) ? pv : candidates[0];
   const optionId = caseId ? optionForFaq(state, state.cases[caseId], file.id, entry.key) : null;
-  const reply = !file.draft && caseId && optionId ? previewAnswer(state, caseId, optionId) : undefined;
+  const reply = caseId && optionId ? previewAnswer(state, caseId, optionId) : undefined;
 
   return (
     <section className="view">
@@ -59,9 +59,7 @@ export function Knowledge() {
 
         <aside className="preview">
           <div className="k">Preview with a chart</div>
-          {file.draft ? (
-            <p className="help">Drafts are never used in replies.</p>
-          ) : candidates.length === 0 ? (
+          {candidates.length === 0 ? (
             <p className="help">This entry isn’t a patient question. The coordinator uses it when offering times.</p>
           ) : (
             <>

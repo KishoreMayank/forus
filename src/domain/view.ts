@@ -97,6 +97,12 @@ export function systemsOf(s: State, c: Case): [string, string][] {
   ];
 }
 
+/** First clause of an explanation, for one-line activity details. */
+const short = (why: string) => {
+  const first = why.split(/(?<=(?<!Dr|Mr|Ms|Mrs)\.)\s/)[0].replace(/\.$/, '');
+  return first.length > 70 ? first.slice(0, 68).replace(/\s\S*$/, '') + '…' : first;
+};
+
 const SHOWN = ['found', 'outreach', 'explanation', 'schedule', 'booking', 'cancellation', 'pause', 'resume', 'handoff', 'completion', 'closed', 'record', 'message'];
 
 export function activityOf(s: State, c: Case, limit = 5): { at: string; title: string; detail: string }[] {
@@ -104,7 +110,7 @@ export function activityOf(s: State, c: Case, limit = 5): { at: string; title: s
   const tx = TREATMENTS[rec.treatment];
   const items = [
     { at: rec.recommendedOn, title: `${tx.label} recommended`, detail: `${s.providers[c.providerId].short} · from the chart` },
-    ...s.events.filter((e) => e.caseId === c.id && SHOWN.includes(e.kind)).map((e) => ({ at: e.at, title: e.title, detail: e.why })),
+    ...s.events.filter((e) => e.caseId === c.id && SHOWN.includes(e.kind)).map((e) => ({ at: e.at, title: e.title, detail: short(e.why) })),
   ];
   return items.slice(-limit).map((i) => ({ ...i, at: rel(i.at, s.now, false) === 'today' ? fmtTime(i.at) : cap(rel(i.at, s.now, false)) }));
 }

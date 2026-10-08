@@ -97,7 +97,7 @@ export const FAQ_FILES: FaqFile[] = [
   },
   {
     id: 'costs', file: 'costs.md', title: 'Costs & insurance', editedBy: 'Office manager', edited: at(2026, 10, 5), draft: true,
-    intro: 'Draft. The follow-up won’t answer from this file until insurance is connected; cost questions go to the front desk.',
+    intro: 'Draft. Only its routing rule is live: cost questions go to the front desk until insurance is connected.',
     entries: [{ key: 'cost', q: 'How much will it cost?', route: 'front_desk' }],
   },
 ];

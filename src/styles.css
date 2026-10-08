@@ -484,3 +484,5 @@ button.ap:hover { filter: brightness(1.08); }
   .ig-layout.has-panel { grid-template-columns: 1fr; }
   .modal { left: 8px; right: 8px; width: auto; transform: none; }
 }
+.next-note { align-self: stretch; margin-top: 12px; padding: 8px 0 8px 12px; border-left: 2px solid var(--teal); font-size: 13.5px; color: var(--slate); }
+.next-note b { color: var(--ink); font-weight: 600; }
