@@ -153,10 +153,11 @@
   .page-head h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
   .page-head p { color: var(--slate); margin-top: 4px; font-size: 15px; }
   .count-line { margin-top: 22px; font-size: 13px; color: var(--slate); display: flex; align-items: center; gap: 4px; }
-  .toolbar { display: flex; gap: 10px; margin-top: 10px; }
-  .search { flex: 1; }
+  .toolbar { display: flex; gap: 10px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+  .toolbar .filters { margin-top: 0; }
+  .search { flex: 1; min-width: 140px; max-width: 220px; margin-left: auto; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .toolbar input, .toolbar select { width: 100%; font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 9px; background: #fff; color: var(--ink); }
+  .toolbar input, .toolbar select { width: 100%; font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 9px; background: #fff; color: var(--ink); }
   .toolbar select { width: 190px; }
   .toolbar input:focus, .toolbar select:focus { outline: 2px solid var(--teal-wash); border-color: var(--teal); }
   .queue-h { padding: 12px 4px 10px; }
@@ -434,13 +435,13 @@
         <div class="pt-list">
           <div class="count-line"><span data-count="all"></span> patients · from charts, last 90 days <span class="mk">2</span></div>
           <div class="toolbar">
-            <label class="search"><span class="sr">Search patients</span><input id="ptSearch" type="search" placeholder="Search patients" /></label>
-            <select id="ptStatus" aria-label="Filter by status">
-              <option value="all">All statuses</option>
-              <option value="attention">Needs attention</option>
-              <option value="progress">In progress</option>
-              <option value="booked">Booked</option>
-            </select>
+            <div class="filters" role="tablist" aria-label="Filter by status">
+              <button role="tab" data-filter="all" aria-selected="true">All <span class="cnt" data-count="all"></span></button>
+              <button role="tab" data-filter="attention" aria-selected="false">Needs attention <span class="cnt" data-count="attention"></span></button>
+              <button role="tab" data-filter="progress" aria-selected="false">In progress <span class="cnt" data-count="progress"></span></button>
+              <button role="tab" data-filter="booked" aria-selected="false">Booked <span class="cnt" data-count="booked"></span></button>
+            </div>
+            <label class="search"><span class="sr">Search patients</span><input id="ptSearch" type="search" placeholder="Search" /></label>
           </div>
           <div class="queue" data-group="attention">
             <div class="queue-h"><span class="grp"><i class="gdot attn"></i>Needs attention <span class="mk">3</span></span><span class="cnt" data-count="attention"></span></div>
@@ -594,7 +595,7 @@
 
   <ol class="notes" data-for="queue">
     <li><span class="mk">1</span><span><b>Connections in one line.</b> <span class="t">&ldquo;Synced 9:04 AM&rdquo; is all staff need. Clicking it lists the four sources and what each is used for. A failed sync would turn this amber.</span></span></li>
-    <li><span class="mk">2</span><span><b>Purpose first, source second.</b> <span class="t">The title says what the list is for. The count line says where the patients come from. Search and one status dropdown scale to hundreds of patients without a row of pills.</span></span></li>
+    <li><span class="mk">2</span><span><b>Purpose first, source second.</b> <span class="t">The title says what the list is for. The count line says where the patients come from. Status chips with counts give the shape of the list at a glance; search finds one patient fast.</span></span></li>
     <li><span class="mk">3</span><span><b>One status phrase per row.</b> <span class="t">Name over treatment and dentist, then a single phrase on the right that says what&rsquo;s going on and, for handoffs, who it&rsquo;s waiting on. Only the Needs attention dot is amber.</span></span></li>
     <li><span class="mk">4</span><span><b>The Patient tab is a short case file.</b> <span class="t">What the chart says (quoted, with its source); the state of each connected system for this patient; contact details; recent activity; and one line saying what happens next.</span></span></li>
   </ol>
@@ -673,7 +674,7 @@ Object.entries(ROWS).forEach(([g, list]) => {
 });
 document.querySelectorAll('[data-count="all"]').forEach((el) => (el.textContent = Object.values(ROWS).flat().length));
 function applyFilter() {
-  const f = document.getElementById('ptStatus').value;
+  const f = document.querySelector('[data-filter][aria-selected="true"]').dataset.filter;
   const q = document.getElementById('ptSearch').value.trim().toLowerCase();
   document.querySelectorAll('.queue[data-group]').forEach((g) => {
     let shown = 0;
@@ -681,7 +682,10 @@ function applyFilter() {
     g.hidden = (f !== 'all' && g.dataset.group !== f) || shown === 0;
   });
 }
-document.getElementById('ptStatus').addEventListener('change', applyFilter);
+document.querySelectorAll('[data-filter]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-filter]').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+  applyFilter();
+}));
 document.getElementById('ptSearch').addEventListener('input', applyFilter);
 
 /* ── views ──────────────────────────────────────────── */
