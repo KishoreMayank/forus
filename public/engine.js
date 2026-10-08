@@ -1,3 +1,5 @@
+import {loadKnowledge} from './knowledge-store.js?v=1';
+import {composeAnswer} from './knowledge-response.js?v=1';
 export const VERSION = 1;
 export const DAY = 86400000;
 export const START = Date.UTC(2026,9,12,9);
@@ -61,7 +63,7 @@ export function slots(s,c){const out=[];let d=s.now+DAY;while(out.length<3){cons
 export function nextAction(c){if(!c.contact)return 'Contact stopped';if(c.sourceStatus==='completed')return 'No further follow-up';if(c.appointment)return `${c.appointment.kind} · ${fmtFull(c.appointment.start)}`;if(c.wakeAt)return `${c.status==='paused'?'Reconnect':'Follow up'} · ${fmtDate(c.wakeAt)}`;if(c.status==='declined')return 'Patient chose not to proceed';if(c.status==='closed')return 'Outreach concluded';return 'Waiting for patient choice';}
 export const statusLabel = c => !c.contact?'Contact stopped':({eligible:'Ready',waiting:'Awaiting reply',engaged:'In conversation',paused:'Paused',booked:c.consult?'Discussion booked':'Treatment booked',completed:'Completed',declined:'Declined',closed:'No response'}[c.status]||c.status);
 export function canReply(c){return c.contact&&c.sourceStatus!=='completed'&&!['declined','closed'].includes(c.status);}
-export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)return {ok:false,message:'Patient not found.'};
+export function act(s,id,type,payload,context={}){const c=s.cases.find(x=>x.id===id);if(!c)return {ok:false,message:'Patient not found.'};
  if(type==='complete'){
   if(!c.appointment||c.appointment.kind!=='Treatment')return {ok:false,message:'A treatment appointment is required.'};
   s.now=Math.max(s.now,c.appointment.start+c.appointment.duration*60000);c.sourceStatus='completed';c.status='completed';c.stage='done';c.wakeAt=null;
@@ -79,7 +81,7 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
    c.note='Dr. Lee · Oct 12: Tooth 30 has a large old filling with a crack along the back wall. A crown was recommended to protect the tooth from breaking.';
    c.explanation='Tooth 30 has a large old filling with a crack along the back. A crown protects the tooth from breaking further. The team can answer questions before the visit; you decide whether to proceed.';
    c.status='engaged';c.stage='explained';c.wakeAt=null;c.sources=['note'];
-   if(c.contact)say(s,c,`Dr. Lee added the reason to your chart. ${c.explanation}`,'agent',['note']);
+   if(c.contact){const response=composeAnswer(c,'why',context.knowledge??loadKnowledge().entries);say(s,c,`Dr. Lee added the reason to your chart. ${response.text}`,'agent',response.sources);}
    event(s,c,'Reason added to chart','Dr. Lee recorded the patient-specific reason. Clara shared it with the patient.');
    return {ok:true,message:`Reason added. Clara explained it to ${first}.`};
   }
@@ -110,6 +112,14 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
   const kept=paid(c);if(c.contact)say(s,c,`Your appointment has been cancelled.${kept?` Your ${money(kept)} payment stays on file for your next visit.`:''} I can find another time, or reconnect when it works better for you.`);return {ok:true,message:'Appointment cancelled. Clara offered another time.'};
  }
  if(!canReply(c))return {ok:false,message:'This conversation is closed.'};
+ if(type==='faq'){
+  const entries=context.knowledge??loadKnowledge().entries,entry=entries.find(e=>e.id===payload);
+  if(!entry)return {ok:false,message:'That answer was removed. Choose a current practice question.'};
+  const response=composeAnswer(c,'faq',entries,payload);patient(s,c,entry.question);say(s,c,response.text,'agent',response.sources);
+  if(['waiting','eligible'].includes(c.status)){c.status='engaged';c.stage='explained';c.wakeAt=null;}
+  event(s,c,response.requiresDentist?'Dentist discussion offered':'Practice question answered',`${entry.question} · saved guidance and relevant patient records checked.`);
+  return {ok:true,message:''};
+ }
  if(type==='stop'){patient(s,c,'Stop messages');c.contact=false;c.wakeAt=null;c.stage='done';say(s,c,'Messages stopped. You can still contact Cedar Dental directly. Any existing appointment remains booked.');event(s,c,'Contact preference updated','All future coordinator outreach suppressed.');return {ok:true,message:'Future outreach stopped.'};}
  if(type==='decline'){if(c.appointment)return {ok:false,message:'Cancel the appointment before declining treatment.'};patient(s,c,'I don’t want to proceed');c.status='declined';c.stage='done';c.wakeAt=null;say(s,c,'Understood. I won’t follow up on this recommendation again. You can contact the practice if you change your mind.');event(s,c,'Patient declined','Coordination closed. The clinical recommendation remains in the source record.');return {ok:true,message:'Patient decision recorded.'};}
  if(type==='keep'){
@@ -122,13 +132,12 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
  const prevWake=c.wakeAt;c.wakeAt=null;
  if(type==='why'){
   if(c.stage==='explained'){c.wakeAt=prevWake;return {ok:false,message:'Explanation already shown.'};}patient(s,c,'Why was this treatment recommended?');c.barrier='Treatment understanding';c.status='engaged';c.stage='explained';
-  if(c.explanation){say(s,c,c.explanation,'agent',['note']);}
-  else if(c.id==='alex'){say(s,c,'A crown can support and protect a tooth, but your synced note doesn’t include why Dr. Lee recommended it for your tooth. I don’t want to guess. I can arrange a discussion with the dentist before you decide.','agent',['crown','note']);}
-  else{say(s,c,'Dr. Lee’s note records a crack in tooth 30 and recommends a crown to protect and support the remaining tooth. A crown covers the tooth. The team can discuss your questions before treatment; you decide whether to proceed.','agent',['crown','note']);}
-  c.sources=c.explanation?['note']:['crown','note'];event(s,c,'Recommendation explained',c.id==='alex'?'Missing patient-specific rationale disclosed; offered a dentist discussion.':(c.explanation?'Used the existing clinician note and recorded care plan.':'Used the existing clinician note and practice-approved crown guide.'));
+  const response=composeAnswer(c,'why',context.knowledge??loadKnowledge().entries);
+  say(s,c,response.text,'agent',response.sources);c.sources=response.sources.map(x=>x.id);
+  event(s,c,'Recommendation explained',response.requiresDentist?'Clinical clarification offered; saved guidance and patient chart checked.':'Used the current patient chart and saved practice knowledge.');
  }else if(type==='visit'){
   if(c.visitInfo){c.wakeAt=prevWake;return {ok:false,message:'Visit information already shared.'};}c.visitInfo=true;
-  patient(s,c,'What happens at the appointment?');c.status='engaged';c.stage='explained';say(s,c,`The team will review the planned treatment and answer your questions before beginning. Your treatment plan reserves ${c.duration||60} minutes with Dr. Lee. If you want to discuss the recommendation first, I can book a separate 30-minute discussion.`,'agent',['visit','schedule']);c.sources=['visit','schedule'];event(s,c,'Visit information shared','Practice guide and scheduling requirements referenced.');
+  patient(s,c,'What happens at the appointment?');c.status='engaged';c.stage='explained';const response=composeAnswer(c,'visit',context.knowledge??loadKnowledge().entries);say(s,c,response.text,'agent',response.sources);c.sources=response.sources.map(x=>x.id);event(s,c,'Visit information shared','Used the current treatment plan and saved practice knowledge.');
  }else if(type==='consult'){
   patient(s,c,'I’d like to discuss this with the dentist');c.consult=true;c.stage='slots';c.status='engaged';say(s,c,'Of course. Here are 30-minute discussion appointments with Dr. Shah. This gives you time to ask questions before making a treatment decision.');event(s,c,'Discussion requested','Showing discussion times with Dr. Shah; treatment remains outstanding.');
  }else if(type==='treatment'){

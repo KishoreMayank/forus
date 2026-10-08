@@ -1,9 +1,11 @@
+import {loadKnowledge,key as knowledgeKey} from './knowledge-store.js?v=1';
+import {relevantKnowledge} from './knowledge-response.js?v=1';
 import {scheduledMessage,updateScheduledMessage} from './scheduled-message.js?v=3';
 import {setupSourceData} from './source-data.js?v=12';
 import {setupCalendar} from './calendar.js?v=7';
-import {seed,act,advance,slots,nextAction,fmtFull,fmtDate,fmtTime,VERSION,knowledge,money,balance,paid,canTakePayment,ledger} from './engine.js?v=12';
+import {seed,act,advance,slots,nextAction,fmtFull,fmtDate,fmtTime,VERSION,knowledge,money,balance,paid,canTakePayment,ledger} from './engine.js?v=13';
 
-import {extendPatients} from './demo-patients.js?v=16';
+import {extendPatients} from './demo-patients.js?v=17';
 
 const KEY='cedar-register-v1';
 function initialState(){
@@ -81,6 +83,22 @@ function billingPanel(c){
  return `<section class="billing-panel"><div class="billing-head"><h3>Insurance &amp; billing</h3><span>${escape(b.plan)}</span></div><div class="billing-sum"><p><strong>${money(b.share)}</strong> patient share${paid(c)&&due?` · ${money(due)} due`:''}</p><span>${money(b.fee)} fee · ${b.insurance?`${money(b.insurance)} insurance estimate`:'no insurance'}</span></div>${action}</section>`;
 }
 const canBookTreatment=c=>c.consult&&!c.note.includes('does not include the patient-specific rationale');
+function sourceDisclosure(m,c){
+ const sources=(m.sources||[]).map(source=>{
+  if(typeof source==='object')return source;
+  if(source==='note')return {kind:'chart',title:'Patient chart',text:c.note};
+  const entry=knowledge.find(k=>k.id===source);
+  return {kind:'knowledge',title:entry?.title||'Earlier practice guidance',text:entry?.text||'Source text is unavailable for this earlier message.'};
+ });
+ if(!sources.length)return '';
+ const kinds=[...new Set(sources.map(s=>s.kind==='chart'?'Patient record':'Knowledge'))].join(' + ');
+ return `<details class="message-source"><summary>Sources used · ${escape(kinds)}</summary>${sources.map(s=>`<p><strong>${escape(s.title)}</strong>${s.source?`<br><small>${escape(s.source)}</small>`:''}<br>${escape(s.text)}${s.requiresDentist?'<br><small>Dentist input required</small>':''}</p>`).join('')}</details>`;
+}
+function practiceQuestions(c){
+ const entries=relevantKnowledge(c,loadKnowledge().entries);
+ if(!entries.length)return '';
+ return `<details class="practice-questions"><summary>Ask a practice question</summary><div class="practice-question-controls"><select aria-label="Practice question">${entries.map(e=>`<option value="${escape(e.id)}">${escape(e.question)}</option>`).join('')}</select><button class="control" data-action="ask-knowledge">Ask Clara</button></div><small>Uses saved Knowledge and relevant patient records.</small></details>`;
+}
 function replies(c){
  if(thinking&&thinking.id===c.id)return '<div class="response-label">Waiting for Clara’s reply <span>Scripted demo</span></div>';
  if(c.attention)return '<div class="conversation-ended">Front desk review needed before scheduling.</div>';
@@ -93,10 +111,10 @@ function replies(c){
  else if(c.stage==='cancelled') controls=reply(c.consult?'Find another discussion time':'Find another time','slots',true)+(canBookTreatment(c)?reply('Book the treatment','treatment'):'')+reply('Contact me next week','pause');
  else if(c.stage==='explained') controls=(attentionFor(c)?'':reply('Find a time','slots',true))+reply('Discuss with the dentist','consult')+(c.visitInfo?'':reply('What happens at the visit?','visit'));
  else controls=reply('Why was this recommended?','why')+(attentionFor(c)?'':reply('Find a time','slots',true))+reply('Contact me next week','pause');
- return `<div class="response-label">Try a patient response <span>Scripted demo</span></div><div class="response-options">${controls}</div><details class="more-choices"><summary>More choices</summary><div>${!c.appointment?(controls.includes('data-value="pause"')?'':reply('Contact me next week','pause'))+reply('I don’t want to proceed','decline'):''}${reply('Stop messages','stop')}</div></details>`;
+ return `<div class="response-label">Try a patient response <span>Scripted demo</span></div><div class="response-options">${controls}</div>${practiceQuestions(c)}<details class="more-choices"><summary>More choices</summary><div>${!c.appointment?(controls.includes('data-value="pause"')?'':reply('Contact me next week','pause'))+reply('I don’t want to proceed','decline'):''}${reply('Stop messages','stop')}</div></details>`;
 }
 function reminderPreview(c){const m=scheduledMessage(state,c);if(!m)return '';return `<div class="scheduled-message ${m.paused?'is-paused':''}" aria-label="Scheduled message"><div class="scheduled-caption">${m.paused?'Paused':'Scheduled'} · ${fmtFull(m.at)}, ${fmtTime(m.at)} · ${m.kind}</div><div class="scheduled-bubble"><p>${escape(m.text)}</p></div><div class="scheduled-actions">${m.paused?'<button type="button" data-action="reminder-resume" aria-label="Resume reminder">Resume</button>':'<button type="button" data-action="reminder-send" aria-label="Send reminder now">Send now</button><button type="button" data-action="reminder-pause" aria-label="Pause reminder">Pause</button>'}</div></div>`;}
-function conversation(c){let previousDay='';return `<div class="conversation"><div class="message-history">${c.messages.map(m=>{const date=new Date(m.at);const day=date.toISOString().slice(0,10);const dateLabel=new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}).format(date);const separator=day!==previousDay?`<div class="conversation-date"><time datetime="${date.toISOString().slice(0,10)}">${escape(dateLabel)}</time></div>`:'';previousDay=day;return `${separator}<div class="message-turn ${m.who}"><article class="chat-message ${m.who}"><div class="chat-who">${m.who==='patient'?c.name.split(' ')[0]:'Clara · AI assistant'}<span class="message-channel">${m.channel==='email'?'Email':'Text'}</span></div><p>${escape(m.text)}</p>${m.sources.length?`<details class="message-source"><summary>Sources used</summary>${m.sources.map(id=>`<p><strong>${id==='note'?'Patient chart':knowledge.find(k=>k.id===id).title}</strong><br>${escape(id==='note'?c.note:knowledge.find(k=>k.id===id).text)}</p>`).join('')}</details>`:''}</article><time class="message-time" datetime="${date.toISOString()}">${fmtTime(m.at)}</time></div>`;}).join('')}${thinking?.id===c.id?'<div class="thinking-message" role="status" aria-live="polite"><span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>Clara is thinking…</span></div>':reminderPreview(c)}</div>${c.appointment?`<div class="booking-summary"><div class="booking-date"><span>${new Intl.DateTimeFormat('en-US',{month:'short',timeZone:'UTC'}).format(c.appointment.start)}</span><strong>${new Date(c.appointment.start).getUTCDate()}</strong></div><div class="booking-info"><div class="booking-title">${c.appointment.kind==='Discussion'?'Dentist discussion':'Treatment appointment'}<span class="booking-confirmed"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 8 2.5 2.5L12 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>${c.sourceStatus==='completed'?'Completed':'Confirmed'}</span></div><div class="booking-time">${new Intl.DateTimeFormat('en-US',{weekday:'long',timeZone:'UTC'}).format(c.appointment.start)} · ${fmtTime(c.appointment.start)}</div><div class="booking-provider">${escape(c.appointment.provider)} · ${c.appointment.duration||60} min</div></div>${c.appointment.kind==='Treatment'&&c.billing&&!balance(c)&&c.billing.payments.length?`<div class="booking-payment-receipt"><span class="paid-tag">Paid · ${money(paid(c))}</span><small>Receipt ${escape(c.billing.payments.at(-1).receipt)} · Balance ${money(balance(c))}</small></div>`:''}</div>`:''}<div class="response-area">${replies(c)}</div></div>`;}
+function conversation(c){let previousDay='';return `<div class="conversation"><div class="message-history">${c.messages.map(m=>{const date=new Date(m.at);const day=date.toISOString().slice(0,10);const dateLabel=new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}).format(date);const separator=day!==previousDay?`<div class="conversation-date"><time datetime="${date.toISOString().slice(0,10)}">${escape(dateLabel)}</time></div>`:'';previousDay=day;return `${separator}<div class="message-turn ${m.who}"><article class="chat-message ${m.who}"><div class="chat-who">${m.who==='patient'?c.name.split(' ')[0]:'Clara · AI assistant'}<span class="message-channel">${m.channel==='email'?'Email':'Text'}</span></div><p>${escape(m.text)}</p>${sourceDisclosure(m,c)}</article><time class="message-time" datetime="${date.toISOString()}">${fmtTime(m.at)}</time></div>`;}).join('')}${thinking?.id===c.id?'<div class="thinking-message" role="status" aria-live="polite"><span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>Clara is thinking…</span></div>':reminderPreview(c)}</div>${c.appointment?`<div class="booking-summary"><div class="booking-date"><span>${new Intl.DateTimeFormat('en-US',{month:'short',timeZone:'UTC'}).format(c.appointment.start)}</span><strong>${new Date(c.appointment.start).getUTCDate()}</strong></div><div class="booking-info"><div class="booking-title">${c.appointment.kind==='Discussion'?'Dentist discussion':'Treatment appointment'}<span class="booking-confirmed"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 8 2.5 2.5L12 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>${c.sourceStatus==='completed'?'Completed':'Confirmed'}</span></div><div class="booking-time">${new Intl.DateTimeFormat('en-US',{weekday:'long',timeZone:'UTC'}).format(c.appointment.start)} · ${fmtTime(c.appointment.start)}</div><div class="booking-provider">${escape(c.appointment.provider)} · ${c.appointment.duration||60} min</div></div>${c.appointment.kind==='Treatment'&&c.billing&&!balance(c)&&c.billing.payments.length?`<div class="booking-payment-receipt"><span class="paid-tag">Paid · ${money(paid(c))}</span><small>Receipt ${escape(c.billing.payments.at(-1).receipt)} · Balance ${money(balance(c))}</small></div>`:''}</div>`:''}<div class="response-area">${replies(c)}</div></div>`;}
 function renderCase(){const c=current();if(!c){document.querySelector('#selected-patient').innerHTML='';return;}document.querySelector('#selected-patient').innerHTML=`<section class="patient-record active-case"><div class="active-case-heading"><div><h2>${c.name}</h2><small>${c.treatment} · Chart #${c.chartId}</small></div>${status(c)}</div>${groupOf(c)==='attention'?`<div class="attention-context"><span class="attention-owner">${escape(attentionFor(c).owner)}</span><div><strong>${escape(attentionFor(c).title)}</strong><p>${escape(attentionFor(c).detail)}</p>${c.contact?`<button class="control" data-action="resolve" data-primary="true">${c.attention?`Estimate confirmed · send to ${escape(c.name.split(' ')[0])}`:'Mark reason added to chart'}</button>`:''}</div></div>`:''}<div class="case-nav" role="tablist" aria-label="Patient detail">${[['overview','Patient info'],['conversation','Communication']].map(([id,name])=>`<button role="tab" aria-selected="${tab===id}" data-action="tab" data-value="${id}">${name}</button>`).join('')}</div><div role="tabpanel">${tab==='overview'?overview(c):conversation(c)}</div></section>`;const history=document.querySelector('.message-history');if(history)history.scrollTop=history.scrollHeight;syncMobilePatient();if(thinking)document.querySelectorAll('[data-action]').forEach(b=>{if(!['select','tab','reset','close-patient'].includes(b.dataset.action))b.disabled=true;});}
 const mobilePatientMedia=matchMedia('(max-width:900px)');
 const mobilePatient=document.createElement('dialog');
@@ -121,7 +139,7 @@ function focusReplies(){if(document.activeElement&&document.activeElement!==docu
 function perform(type,value){
  if(thinking)return;
  const id=state.selected;
- if(['why','visit','consult','slots','book','pause','cancel','stop','decline','pay','payatvisit','resolve','keep','treatment'].includes(type)){
+ if(['faq','why','visit','consult','slots','book','pause','cancel','stop','decline','pay','payatvisit','resolve','keep','treatment'].includes(type)){
   const draft=structuredClone(state),before=state.cases.find(c=>c.id===id);
   const result=act(draft,id,type,value),after=draft.cases.find(c=>c.id===id);
   const added=after.messages.slice(before.messages.length);
@@ -139,6 +157,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  else if(a==='tab'){tab=v;renderCase();(mobilePatient.open?mobilePatient:document.querySelector('#selected-patient'))?.querySelector(`[data-action="tab"][data-value="${v}"]`)?.focus({preventScroll:true});}
  else if(a.startsWith('reminder-')){if(updateScheduledMessage(state,current(),a.slice(9))){render();notify(a==='reminder-send'?'Reminder sent.':a==='reminder-pause'?'Reminder paused. Appointment unchanged.':'Reminder resumed.');}}
  else if(a==='reply')perform(v);
+ else if(a==='ask-knowledge')perform('faq',b.closest('.practice-questions').querySelector('select').value);
  else if(a==='slot'){chosen=v;renderCase();(mobilePatient.open?mobilePatient:document).querySelector('[data-action="book"]')?.focus();}
  else if(a==='book')perform('book',chosen);
  else if(a==='advance'){chosen=null;notify(advance(state));render();}
@@ -175,3 +194,5 @@ fillLive();
 setupCalendar(()=>state);
 
 setupSourceData(()=>state);
+
+window.addEventListener('storage',e=>{if(e.key===knowledgeKey&&workspace&&!thinking)renderCase();});
