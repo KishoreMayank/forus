@@ -8,11 +8,21 @@ const definitions=[
  ['Implants','implant','What does a dental implant do?','An implant is placed in the jaw to support a replacement tooth or other dental restoration. Your dentist will discuss whether it is appropriate for you.',guide],
  ['Bridges','bridge','What does a dental bridge do?','A bridge is a fixed replacement for one or more missing teeth. Your dentist will explain how it would be supported and whether it suits your situation.',guide]
 ];
-export const treatmentEntries=definitions.flatMap(([topic,slug,question,answer,source])=>[
- {id:`kb-${slug}-overview`,topic,question,answer,source,chart:['Fillings','Root canals','Gum care','Extractions'].includes(topic)},
- {id:`kb-${slug}-visit`,topic,question:`What should I expect at my ${topic==='Gum care'?'gum care':topic==='Root canals'?'root canal':slug} appointment?`,answer:'The team will review your recorded treatment plan and answer your questions before starting. I can check the planned visit length and provider when helping you book.',source:'Practice scheduling guidance',chart:false},
- {id:`kb-${slug}-alternatives`,topic,question:`Are there alternatives to ${{'Fillings':'a filling','Root canals':'root canal treatment','Gum care':'a deep cleaning','Extractions':'removing the tooth','Implants':'an implant','Bridges':'a bridge'}[topic]||topic.toLowerCase()}?`,answer:'Your dentist needs to compare the options using your examination and treatment history. I can help arrange that discussion before you decide.',source:'Practice communication guidance',dentist:true,chart:false}
-]);
+// What to expect, per treatment (general guidance; the dentist confirms what applies to each patient).
+const visits={
+ Crowns:['crown','What should I expect at my crown appointment?','A crown usually takes two visits. At the first, the tooth is shaped and a temporary crown is fitted. At the second, the permanent crown is placed. Your dentist will confirm what applies to you.'],
+ Fillings:['filling','What should I expect at my filling appointment?','Most fillings take 30 to 60 minutes. The area is usually numbed first, and you can eat once the numbness wears off. Your dentist will confirm what applies to you.'],
+ 'Root canals':['root-canal','What should I expect at my root canal appointment?','Root canal treatment usually takes 60 to 90 minutes with a local anesthetic. Afterward, the tooth often needs a crown to protect it. Your dentist will explain the plan for your tooth.'],
+ 'Gum care':['gum-care','What should I expect at my deep cleaning?','A deep cleaning is often done one side of the mouth at a time, with numbing. Your gums may feel tender for a few days afterward. Your dentist will confirm what applies to you.'],
+ Extractions:['extraction','What should I expect when a tooth is removed?','The area is numbed before the tooth is removed. The team will give you aftercare instructions and talk through options for replacing the tooth, if needed.'],
+ Implants:['implant','What should I expect with implant treatment?','Implant treatment happens over several visits, with healing time in between. Your dentist will walk you through each step before you begin.'],
+ Bridges:['bridge','What should I expect when getting a bridge?','A bridge usually takes two visits: one to prepare the supporting teeth and take impressions, and one to fit the bridge. Your dentist will confirm what applies to you.']
+};
+export const visitEntries=Object.entries(visits).map(([topic,[slug,question,answer]])=>({id:`kb-${slug}-visit`,topic,question,answer,source:guide,chart:false}));
+export const treatmentEntries=[
+ ...definitions.map(([topic,slug,question,answer,source])=>({id:`kb-${slug}-overview`,topic,question,answer,source,chart:/^why\b/i.test(question)})),
+ ...visitEntries
+];
 // Fixed fictional examples, grounded in the prototype's existing patient charts.
 export const chartExamples={
  Crowns:'Dr. Lee noted a crack in tooth 30 and recommended a crown to protect and support the remaining tooth.',
@@ -21,4 +31,4 @@ export const chartExamples={
  'Gum care':'After your gum assessment, Dr. Lee recommended periodontal therapy for the lower-right area.',
  Extractions:'Dr. Lee recorded that tooth 16 could not be restored and recommended removing it.'
 };
-export const treatmentDescriptions={Crowns:'Understanding a crown recommendation and the return visit.',Fillings:'Repairing decay and planning the recommended restoration.','Root canals':'Understanding treatment and the visits in the care plan.','Gum care':'Deep cleaning, gum treatment, and follow-up visits.',Extractions:'Understanding a removal recommendation and discussing options.',Implants:'General information about replacing missing teeth.',Bridges:'Understanding fixed tooth replacements and discussing options.'};
+export const treatmentDescriptions={General:'Questions about any recommended treatment: timing, alternatives, and talking with the dentist.',Crowns:'Understanding a crown recommendation and the return visit.',Fillings:'Repairing decay and planning the recommended restoration.','Root canals':'Understanding treatment and the visits in the care plan.','Gum care':'Deep cleaning, gum treatment, and follow-up visits.',Extractions:'Understanding a removal recommendation and discussing options.',Implants:'General information about replacing missing teeth.',Bridges:'Understanding fixed tooth replacements and discussing options.'};

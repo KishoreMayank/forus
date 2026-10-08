@@ -1,9 +1,9 @@
 import {scheduledMessage,updateScheduledMessage} from './scheduled-message.js?v=3';
-import {setupSourceData} from './source-data.js?v=10';
+import {setupSourceData} from './source-data.js?v=12';
 import {setupCalendar} from './calendar.js?v=7';
-import {seed,act,advance,slots,nextAction,fmtFull,fmtDate,fmtTime,VERSION,knowledge,money,balance,paid,canTakePayment,ledger} from './engine.js?v=10';
+import {seed,act,advance,slots,nextAction,fmtFull,fmtDate,fmtTime,VERSION,knowledge,money,balance,paid,canTakePayment,ledger} from './engine.js?v=12';
 
-import {extendPatients} from './demo-patients.js?v=14';
+import {extendPatients} from './demo-patients.js?v=16';
 
 const KEY='cedar-register-v1';
 function initialState(){
@@ -34,7 +34,7 @@ function situation(c){
  if(isClosed(c))return c.sourceStatus==='completed'?'Treatment complete':!c.contact?'Messages stopped by patient':c.status==='declined'?'Decided not to proceed':'No reply after three messages';
  if(c.appointment){
   const end=c.appointment.start+(c.appointment.duration||60)*60000;
-  return end<state.now?'Past appointment · confirm outcome':`${c.consult?'Discussion':'Booked'} · ${fmtFull(c.appointment.start)}, ${fmtTime(c.appointment.start)}`;
+  return end<state.now?'Past appointment · confirm outcome':`${c.appointment.kind==='Discussion'?'Discussion':'Booked'} · ${fmtFull(c.appointment.start)}, ${fmtTime(c.appointment.start)}`;
  }
  if(groupOf(c)==='attention')return attentionFor(c).reason;
  if(c.status==='paused')return c.wakeAt?`Paused until ${fmtDate(c.wakeAt)}`:'Follow-up paused';
@@ -80,16 +80,17 @@ function billingPanel(c){
  const action=last&&!due?`<p class="billing-paid"><span class="paid-tag">Paid</span>${money(last.amount)} · ${fmtDate(last.at)}, ${fmtTime(last.at)} · ${escape(last.method)}</p>`:canTakePayment(c)&&b.requestedAt?`<p class="billing-status"><span class="live-dot" aria-hidden="true"></span>${b.payAtVisit?`Paying at the visit · front desk collects ${money(due)} at check-in`:`Payment requested by text · ${fmtDate(b.requestedAt)}, ${fmtTime(b.requestedAt)} · waiting for ${escape(c.name.split(' ')[0])}`}</p>`:`<p class="billing-note">${c.appointment?'Payment is for treatment visits.':isClosed(c)?'No visit booked.':'Clara texts the estimate once a treatment visit is booked.'}</p>`;
  return `<section class="billing-panel"><div class="billing-head"><h3>Insurance &amp; billing</h3><span>${escape(b.plan)}</span></div><div class="billing-sum"><p><strong>${money(b.share)}</strong> patient share${paid(c)&&due?` · ${money(due)} due`:''}</p><span>${money(b.fee)} fee · ${b.insurance?`${money(b.insurance)} insurance estimate`:'no insurance'}</span></div>${action}</section>`;
 }
+const canBookTreatment=c=>c.consult&&!c.note.includes('does not include the patient-specific rationale');
 function replies(c){
  if(thinking&&thinking.id===c.id)return '<div class="response-label">Waiting for Clara’s reply <span>Scripted demo</span></div>';
  if(c.attention)return '<div class="conversation-ended">Front desk review needed before scheduling.</div>';
  if(!c.contact||['completed','closed','declined'].includes(c.status))return `<div class="conversation-ended">${c.sourceStatus==='completed'?'Treatment complete. Future follow-up stopped.':!c.contact?(c.appointment?'Messages stopped by the patient. Their appointment stays booked.':'Messages stopped by the patient.'):c.status==='declined'?'Patient declined. The recommendation remains in the clinical record.':'Outreach stopped after three unanswered messages.'}</div>`;
  const reply=(text,type,primary)=>button(text,'reply',`data-value="${type}"${primary?' data-primary="true"':''}`);
  let controls='';
- if(c.stage==='slots') controls=`<div class="slot-caption">${c.consult?'Discussion · 30 minutes · Dr. Shah':`Treatment · ${c.duration||60} minutes · Dr. Lee`}</div><div class="time-options">${slots(state,c).map(s=>button(`${fmtFull(s.start)} · ${fmtTime(s.start)}`,'slot',`data-value="${s.id}" aria-pressed="${s.id===chosen}"`)).join('')}</div>${button(c.appointment?'Confirm new time':'Confirm appointment','book',`data-primary="true" ${chosen?'':'disabled'}`)}${c.appointment?reply('Keep my current appointment','keep'):''}`;
- else if(c.stage==='booked') controls=(canTakePayment(c)&&c.billing.requestedAt?reply(`Pay ${money(balance(c))}`,'pay',true)+(c.billing.payAtVisit?'':reply('I’ll pay at the visit','payatvisit')):'')+reply('Change appointment','slots')+reply('Cancel my appointment','cancel');
+ if(c.stage==='slots') controls=`<div class="slot-caption">${c.consult?'Discussion · 30 minutes · Dr. Shah':`Treatment · ${c.duration||60} minutes · Dr. Lee`}</div><div class="time-options">${slots(state,c).map(s=>button(`${fmtFull(s.start)} · ${fmtTime(s.start)}`,'slot',`data-value="${s.id}" aria-pressed="${s.id===chosen}"`)).join('')}</div>${button(c.appointment?'Confirm new time':'Confirm appointment','book',`data-primary="true" ${chosen?'':'disabled'}`)}${c.appointment?reply('Keep my current appointment','keep'):''}${canBookTreatment(c)?reply('Book the treatment instead','treatment'):''}`;
+ else if(c.stage==='booked') controls=(canTakePayment(c)&&c.billing.requestedAt?reply(`Pay ${money(balance(c))}`,'pay',true)+(c.billing.payAtVisit?'':reply('I’ll pay at the visit','payatvisit')):'')+(c.appointment?.kind==='Discussion'&&canBookTreatment(c)?reply('Book the treatment','treatment'):'')+reply('Change appointment','slots')+reply('Cancel my appointment','cancel');
  else if(c.stage==='paused') controls=reply('I’m ready now','slots',true);
- else if(c.stage==='cancelled') controls=reply('Find another time','slots',true)+reply('Contact me next week','pause');
+ else if(c.stage==='cancelled') controls=reply(c.consult?'Find another discussion time':'Find another time','slots',true)+(canBookTreatment(c)?reply('Book the treatment','treatment'):'')+reply('Contact me next week','pause');
  else if(c.stage==='explained') controls=(attentionFor(c)?'':reply('Find a time','slots',true))+reply('Discuss with the dentist','consult')+(c.visitInfo?'':reply('What happens at the visit?','visit'));
  else controls=reply('Why was this recommended?','why')+(attentionFor(c)?'':reply('Find a time','slots',true))+reply('Contact me next week','pause');
  return `<div class="response-label">Try a patient response <span>Scripted demo</span></div><div class="response-options">${controls}</div><details class="more-choices"><summary>More choices</summary><div>${!c.appointment?(controls.includes('data-value="pause"')?'':reply('Contact me next week','pause'))+reply('I don’t want to proceed','decline'):''}${reply('Stop messages','stop')}</div></details>`;
@@ -120,7 +121,7 @@ function focusReplies(){if(document.activeElement&&document.activeElement!==docu
 function perform(type,value){
  if(thinking)return;
  const id=state.selected;
- if(['why','visit','consult','slots','book','pause','cancel','stop','decline','pay','payatvisit','resolve','keep'].includes(type)){
+ if(['why','visit','consult','slots','book','pause','cancel','stop','decline','pay','payatvisit','resolve','keep','treatment'].includes(type)){
   const draft=structuredClone(state),before=state.cases.find(c=>c.id===id);
   const result=act(draft,id,type,value),after=draft.cases.find(c=>c.id===id);
   const added=after.messages.slice(before.messages.length);

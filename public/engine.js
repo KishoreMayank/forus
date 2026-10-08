@@ -114,11 +114,11 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
  if(type==='decline'){if(c.appointment)return {ok:false,message:'Cancel the appointment before declining treatment.'};patient(s,c,'I don’t want to proceed');c.status='declined';c.stage='done';c.wakeAt=null;say(s,c,'Understood. I won’t follow up on this recommendation again. You can contact the practice if you change your mind.');event(s,c,'Patient declined','Coordination closed. The clinical recommendation remains in the source record.');return {ok:true,message:'Patient decision recorded.'};}
  if(type==='keep'){
   if(!c.appointment||c.stage!=='slots')return {ok:false,message:'No change in progress.'};
-  patient(s,c,'Keep my current appointment');c.stage='booked';
+  patient(s,c,'Keep my current appointment');c.stage='booked';c.consult=c.appointment.kind==='Discussion';
   say(s,c,`No problem. You’re still booked for ${fmtFull(c.appointment.start)} at ${fmtTime(c.appointment.start)}.`);
   return {ok:true,message:''};
  }
- if(c.appointment&&!['slots'].includes(type)&&type!=='book')return {ok:false,message:'Change or cancel the existing appointment first.'};
+ if(c.appointment&&!['slots','treatment'].includes(type)&&type!=='book')return {ok:false,message:'Change or cancel the existing appointment first.'};
  const prevWake=c.wakeAt;c.wakeAt=null;
  if(type==='why'){
   if(c.stage==='explained'){c.wakeAt=prevWake;return {ok:false,message:'Explanation already shown.'};}patient(s,c,'Why was this treatment recommended?');c.barrier='Treatment understanding';c.status='engaged';c.stage='explained';
@@ -131,6 +131,12 @@ export function act(s,id,type,payload){const c=s.cases.find(x=>x.id===id);if(!c)
   patient(s,c,'What happens at the appointment?');c.status='engaged';c.stage='explained';say(s,c,`The team will review the planned treatment and answer your questions before beginning. Your treatment plan reserves ${c.duration||60} minutes with Dr. Lee. If you want to discuss the recommendation first, I can book a separate 30-minute discussion.`,'agent',['visit','schedule']);c.sources=['visit','schedule'];event(s,c,'Visit information shared','Practice guide and scheduling requirements referenced.');
  }else if(type==='consult'){
   patient(s,c,'I’d like to discuss this with the dentist');c.consult=true;c.stage='slots';c.status='engaged';say(s,c,'Of course. Here are 30-minute discussion appointments with Dr. Shah. This gives you time to ask questions before making a treatment decision.');event(s,c,'Discussion requested','Showing discussion times with Dr. Shah; treatment remains outstanding.');
+ }else if(type==='treatment'){
+  if(!c.consult){c.wakeAt=prevWake;return {ok:false,message:'Already looking at treatment times.'};}
+  if(c.note.includes('does not include the patient-specific rationale')){c.wakeAt=prevWake;return {ok:false,message:'The dentist needs to add the reason before treatment is booked.'};}
+  patient(s,c,'I’d like to book the treatment');c.consult=false;c.stage='slots';c.status=c.appointment?c.status:'engaged';
+  say(s,c,`Here are times for your ${spoken(c.treatment)} with Dr. Lee (${c.duration||60} minutes).${c.appointment?' Your discussion stays booked until you confirm a treatment time.':''}`);
+  event(s,c,'Treatment times requested','Patient chose to book treatment; showing Dr. Lee’s availability.');
  }else if(type==='slots'){
   patient(s,c,c.appointment?'I need a different time':c.consult?'Find a discussion time':'I’m ready to find a time');if(!c.appointment)c.status='engaged';c.stage='slots';if(c.barrier==='Unknown')c.barrier='Scheduling';say(s,c,c.appointment?'Choose a replacement time. Your current appointment stays booked until you confirm the new one.':'These times match your current plan. Choose one and I’ll confirm it with the practice.');
  }else if(type==='book'){
