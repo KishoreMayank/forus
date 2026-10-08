@@ -557,3 +557,6 @@ body:has(.mobile-patient-dialog[open]){overflow:hidden}
 .control[data-action=book]:disabled{opacity:1;background:#e5ece7;border-color:#d5dfd8;color:#65776b}
 
 .attention-context .control{margin-top:12px;max-width:100%;white-space:normal;text-align:left}
+
+.patient-header-actions{align-items:stretch}
+.patient-header-actions .demo-reset-inline{height:auto;min-height:0;align-self:stretch}
