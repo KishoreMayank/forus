@@ -206,6 +206,7 @@
   .ig-log { grid-column: 2 / 4; background: var(--wash); border-radius: 8px; padding: 8px 12px; font-size: 12.5px; color: var(--ink); }
   .ig-log li { display: flex; gap: 12px; padding: 2px 0; align-items: center; }
   .ig-log time { color: var(--faint); font-variant-numeric: tabular-nums; width: 34px; }
+  .muted { color: var(--faint); }
   .ig-mini { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
   .ig-off b { font-weight: 500; }
   .soon { font-size: 12px; color: var(--faint); }
@@ -260,7 +261,7 @@
 <header class="doc">
   <div>
     <h1>Treatment follow-up · v2</h1>
-    <p>Patients shows progress by stage, grouped into in progress and booked. FAQs live as files. Each conversation shows which sentences came from the chart and which from an FAQ. The appointment book opens from Integrations or the Booked group. Everything is clickable.</p>
+    <p>Patients shows progress by stage, grouped into in progress and booked. FAQs live as files. Each conversation shows which sentences came from the chart and which from an FAQ. Integrations splits into patient charts, treatment history, scheduling and texting. The scheduling calendar opens as a pop-up. Everything is clickable.</p>
   </div>
   <label><input type="checkbox" id="notesToggle" checked /> Show notes</label>
 </header>
@@ -277,10 +278,10 @@
       <div class="sync">
         <button id="syncBtn" aria-expanded="false"><span class="dot"></span>Synced 9:04 AM <span class="mk">1</span></button>
         <ul class="pop" id="syncPop" hidden>
-          <li><span class="dot"></span><b>Charts &amp; treatment history</b><small>Reads treatment plans, dentist notes, completed work</small></li>
-          <li><span class="dot"></span><b>Appointment book</b><small>Reads open times · writes bookings patients choose</small></li>
+          <li><span class="dot"></span><b>Patient charts</b><small>Treatment plans, dentist notes, contact preferences</small></li>
+          <li><span class="dot"></span><b>Treatment history</b><small>Completed procedures, so finished cases close</small></li>
+          <li><span class="dot"></span><b>Scheduling</b><small>Open times · writes bookings patients choose</small></li>
           <li><span class="dot"></span><b>Text messages</b><small>(555) 010-4400 · weekdays 9–6</small></li>
-          <li><span class="dot" style="background:var(--ink)"></span><b>FAQ files</b><small>4 files · edited by the practice</small></li>
           <li class="pop-foot"><button data-view="integrations" class="link">Manage integrations →</button></li>
         </ul>
       </div>
@@ -306,7 +307,7 @@
         <div id="qrows"></div>
       </div>
       <div class="queue">
-        <div class="queue-h"><span class="grp">Booked <span class="cnt">3</span> <span class="mk">4</span></span><button class="link" data-open-cal>Open appointment book</button></div>
+        <div class="queue-h"><span class="grp">Booked <span class="cnt">3</span> <span class="mk">4</span></span><button class="link" data-open-cal>Open calendar</button></div>
         <div id="brows"></div>
       </div>
     </section>
@@ -352,16 +353,37 @@
       <div class="ig-group">Connected <span class="mk">9</span></div>
       <ul class="ig">
         <li class="ig-row">
-          <div class="ig-id"><span class="dot"></span><div><b>Practice management system</b><small>Charts, treatment history, appointment book</small></div></div>
+          <div class="ig-id"><span class="dot"></span><div><b>Patient charts</b><small>Where patients come from</small></div></div>
           <div class="ig-cols">
-            <div><p class="lbl">Reads</p><p>Treatment plans with no appointment · dentist notes · open times · completed procedures</p></div>
-            <div><p class="lbl">Writes <span class="mk">10</span></p><p>Appointments patients choose · cancellations they ask for</p></div>
+            <div><p class="lbl">Reads</p><p>Treatment plans with nothing booked · the dentist&rsquo;s note for each · contact details and preferences</p></div>
+            <div><p class="lbl">Writes <span class="mk">10</span></p><p class="muted">Nothing</p></div>
           </div>
-          <div class="ig-st"><span>Synced 9:04 AM</span><button class="btn">Sync now</button><button class="link" id="calToggle">Open appointment book <span class="mk">13</span></button></div>
+          <div class="ig-st"><span>Synced 9:04 AM</span><button class="btn">Sync now</button></div>
           <ol class="ig-log">
             <li><time>9:04</time>Found 2 new treatment plans (Nora Kim, Leo Brandt) <span class="mk">11</span></li>
-            <li><time>9:04</time>Marked 1 crown seated (Grace Park). Follow-up closed</li>
             <li><time>8:49</time>No changes</li>
+          </ol>
+        </li>
+        <li class="ig-row">
+          <div class="ig-id"><span class="dot"></span><div><b>Treatment history</b><small>How we know a case is finished</small></div></div>
+          <div class="ig-cols">
+            <div><p class="lbl">Reads</p><p>Completed procedures · past visits</p></div>
+            <div><p class="lbl">Writes</p><p class="muted">Nothing</p></div>
+          </div>
+          <div class="ig-st"><span>Synced 9:04 AM</span><button class="btn">Sync now</button></div>
+          <ol class="ig-log">
+            <li><time>9:04</time>Crown seated for Grace Park. Follow-up closed</li>
+          </ol>
+        </li>
+        <li class="ig-row">
+          <div class="ig-id"><span class="dot"></span><div><b>Scheduling</b><small>Appointment book for Dr. Shah &amp; Dr. Bell</small></div></div>
+          <div class="ig-cols">
+            <div><p class="lbl">Reads</p><p>Open times · existing appointments · cancellations</p></div>
+            <div><p class="lbl">Writes</p><p>Appointments patients choose · cancellations they ask for</p></div>
+          </div>
+          <div class="ig-st"><span>Synced 9:04 AM</span><button class="btn" data-open-cal>Open calendar <span class="mk">13</span></button></div>
+          <ol class="ig-log">
+            <li><time>Fri</time>Booked Sam Patel · Fri 16 Oct, 10:00 · Dr. Shah</li>
           </ol>
         </li>
         <li class="ig-row">
@@ -396,12 +418,12 @@
     <div class="scrim" id="calScrim" hidden></div>
     <div class="modal" id="apptBook" role="dialog" aria-modal="true" aria-labelledby="weekLabel" hidden>
       <div class="modal-head">
-        <div><div class="modal-k">Appointment book · practice management system</div></div>
+        <div><div class="modal-k">Scheduling · appointment book</div></div>
         <button class="x" id="calClose" aria-label="Close appointment book">×</button>
       </div>
             <div class="ig-cal-head">
         <h3 id="weekLabel">12 – 16 Oct</h3>
-        <span class="sub">Dr. Shah &amp; Dr. Bell · read from the practice system</span>
+        <span class="sub">Dr. Shah &amp; Dr. Bell</span>
         <div class="cal-tools">
           <div class="seg"><button id="fAll" aria-pressed="true">All appointments</button><button id="fOurs" aria-pressed="false">Booked by follow-up <span class="mk">14</span></button></div>
           <button class="arrow" id="prevWk" aria-label="Previous week" disabled>‹</button>
@@ -444,11 +466,11 @@
     <li><span class="mk">8</span><span><b>Plain markdown files.</b> <span class="t">Anyone at the desk can edit them. A line starting with &ldquo;→ Ask the dentist&rdquo; is a rule: the tool won&rsquo;t answer that question itself. It offers a discussion instead.</span></span></li>
   </ol>
   <ol class="notes" data-for="integrations" hidden>
-    <li><span class="mk">9</span><span><b>Connected first, and only two.</b> <span class="t">The practice system is where patients come from. Texting is how the tool reaches them. Everything else is optional, so it sits below, out of the way.</span></span></li>
-    <li><span class="mk">10</span><span><b>Reads and writes, side by side.</b> <span class="t">The writes column is short on purpose. It&rsquo;s the part an owner checks before signing off: the tool only ever writes the appointments patients choose.</span></span></li>
+    <li><span class="mk">9</span><span><b>Three practice systems, named for what staff know.</b> <span class="t">Patient charts, treatment history and scheduling each answer one question: who needs follow-up, is it finished, and when can they come in. Texting is how the tool reaches patients.</span></span></li>
+    <li><span class="mk">10</span><span><b>&ldquo;Writes: Nothing&rdquo; is said out loud.</b> <span class="t">Charts and history are read-only. Only Scheduling writes, and only the appointments patients choose. That&rsquo;s the line an owner checks before signing off.</span></span></li>
     <li><span class="mk">11</span><span><b>A sync log in plain words.</b> <span class="t">&ldquo;Found 2 new treatment plans&rdquo; ties the connection to the Queue&rsquo;s &ldquo;Found in charts&rdquo; count, so staff can see where new patients came from.</span></span></li>
     <li><span class="mk">12</span><span><b>Each missing integration says what it would unlock.</b> <span class="t">Insurance is linked to the costs.md draft, which explains why that FAQ isn&rsquo;t live yet. Phone calls are marked planned, not offered.</span></span></li>
-    <li><span class="mk">13</span><span><b>The appointment book opens on demand.</b> <span class="t">It&rsquo;s a read-only view of the practice system&rsquo;s book, opened from here or from the Booked group, and closed when you&rsquo;re done.</span> <b>Only follow-up bookings are coloured.</b> <span class="t">The rest of the book is grey, with no patient names. The point is to see this tool&rsquo;s bookings land in the real schedule, not to replace the practice&rsquo;s calendar.</span></span></li>
+    <li><span class="mk">13</span><span><b>The calendar belongs to Scheduling.</b> <span class="t">It opens as a pop-up from the Scheduling row, or from the Booked group on Patients. It&rsquo;s a read-only view of the real appointment book, with follow-up bookings coloured.</span></span></li>
     <li><span class="mk">14</span><span><b>One filter, nothing else.</b> <span class="t">&ldquo;Booked by follow-up&rdquo; fades the rest of the book. A &ldquo;New&rdquo; tag marks bookings made since you last looked, so a busy desk notices them without a notification.</span></span></li>
   </ol>
 </div>
@@ -615,7 +637,6 @@ fOurs.addEventListener('click', () => setFilter(true));
 
 const apptBook = document.getElementById('apptBook'), calScrim = document.getElementById('calScrim');
 function setCal(open) { apptBook.hidden = calScrim.hidden = !open; if (open) document.getElementById('calClose').focus(); }
-document.getElementById('calToggle').addEventListener('click', () => setCal(true));
 document.getElementById('calClose').addEventListener('click', () => setCal(false));
 calScrim.addEventListener('click', () => setCal(false));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setCal(false); });
